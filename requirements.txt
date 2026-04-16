@@ -1,0 +1,10 @@
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+Flask-Limiter==3.8.0
+Werkzeug==3.0.4
+WTForms==3.1.2
+python-dotenv==1.0.1
+fpdf2==2.7.6
+gunicorn==22.0

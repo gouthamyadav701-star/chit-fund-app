@@ -1,0 +1,12 @@
+<!doctype html>
+<html><body>
+<h2>Add Member</h2>
+<a href="{{ url_for('dashboard') }}">Back</a>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <p>{{ form.name.label }}<br>{{ form.name() }}</p>
+    <p>{{ form.phone.label }}<br>{{ form.phone() }}</p>
+    <p>{{ form.total_amount.label }}<br>{{ form.total_amount() }}</p>
+    <p>{{ form.submit() }}</p>
+</form>
+</body></html>

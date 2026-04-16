@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment History</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; }
+        th { background: #f4f4f4; }
+        a { text-decoration: none; color: blue; }
+    </style>
+</head>
+<body>
+
+<h2>📊 Payment History</h2>
+
+<a href="{{ url_for('dashboard') }}">⬅ Back</a>
+
+<table>
+    <tr>
+        <th>Date</th>
+        <th>Member</th>
+        <th>Amount</th>
+        <th>Receipt</th>
+    </tr>
+
+    {% for p in payments %}
+    <tr>
+        <td>{{ p.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ p.member.name }}</td>
+        <td>₹{{ p.amount }}</td>
+        <td>
+            <a href="{{ url_for('receipt', payment_id=p.id) }}">Download</a>
+        </td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+</body>
+</html>

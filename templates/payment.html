@@ -1,0 +1,11 @@
+<!doctype html>
+<html><body>
+<h2>Payment for {{ member.name }}</h2>
+<p>Due Amount: ₹{{ member.due_amount }}</p>
+<a href="{{ url_for('dashboard') }}">Back</a>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <p>{{ form.amount.label }}<br>{{ form.amount() }}</p>
+    <p>{{ form.submit() }}</p>
+</form>
+</body></html>

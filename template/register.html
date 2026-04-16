@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+    <title>Register</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        .success { color: green; }
+        .danger { color: red; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h2>Register New User</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.username.label }}<br>
+            {{ form.username(size=30) }}
+        </p>
+        <p>
+            {{ form.password.label }}<br>
+            {{ form.password(size=30) }}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+    <p>Already account unda? <a href="{{ url_for('login') }}">Login</a></p>
+</body>
+</html>

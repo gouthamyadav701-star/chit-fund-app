@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head><title>Login</title></head>
+<body>
+<h2>Login</h2>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="{{ category }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<form method="POST">
+    {{ form.hidden_tag() }}  <!-- CSRF token - IMPORTANT -->
+    <p>{{ form.username.label }}<br>{{ form.username(size=32) }}</p>
+    <p>{{ form.password.label }}<br>{{ form.password(size=32) }}</p>
+    <p>{{ form.submit() }}</p>
+</form>
+<a href="{{ url_for('register') }}">Register</a>
+</body>
+</html>

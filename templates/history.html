@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+    <title>Payment History</title>
+    <style>
+        body { font-family: Arial; margin: 40px; background: #f5f5f5; }
+        .container { background: white; padding: 20px; border-radius: 8px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #4CAF50; color: white; }
+        a { text-decoration: none; color: #007bff; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+        .back-btn { display: inline-block; margin-bottom: 20px; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px; }
+        .back-btn:hover { background: #5a6268; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Payment History</h2>
+        <a href="{{ url_for('dashboard') }}" class="back-btn">← Back to Dashboard</a>
+        
+        {% if payments %}
+        <table>
+            <tr>
+                <th>Member</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Receipt</th>
+            </tr>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.member.name }}</td>
+                <td>₹{{ "%.2f"|format(p.amount) }}</td>
+                <td>{{ p.timestamp.strftime('%d-%m-%Y %I:%M %p') }}</td>
+                <td><a href="{{ url_for('receipt', payment_id=p.id) }}">Download PDF</a></td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>No payments yet.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
