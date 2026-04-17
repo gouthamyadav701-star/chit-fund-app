@@ -17,4 +17,4 @@ USER appuser
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "gou:app"]
+CMD ["sh", "-c", "python -m flask --app gou.py db upgrade && gunicorn --bind 0.0.0.0:5000 gou:app"]
