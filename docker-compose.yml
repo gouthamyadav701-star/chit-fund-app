@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: chitfund
+      POSTGRES_USER: chitfund
+      POSTGRES_PASSWORD: chitfund
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chitfund -d chitfund"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      SECRET_KEY: change-me
+      DATABASE_URL: postgresql://chitfund:chitfund@db:5432/chitfund
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

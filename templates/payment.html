@@ -1,11 +1,14 @@
-<!doctype html>
-<html><body>
-<h2>Payment for {{ member.name }}</h2>
-<p>Due Amount: ₹{{ member.due_amount }}</p>
-<a href="{{ url_for('dashboard') }}">Back</a>
-<form method="POST">
-    {{ form.hidden_tag() }}
-    <p>{{ form.amount.label }}<br>{{ form.amount() }}</p>
-    <p>{{ form.submit() }}</p>
-</form>
-</body></html>
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width: 560px;">
+    <h2>Record Payment</h2>
+    <p><strong>{{ member.name }}</strong></p>
+    <p>Due Amount: Rs {{ "%.2f"|format(member.due_amount) }}</p>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <label>{{ form.amount.label }}</label>
+        {{ form.amount() }}
+        {{ form.submit() }}
+    </form>
+</div>
+{% endblock %}

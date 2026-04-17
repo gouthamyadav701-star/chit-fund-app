@@ -1,0 +1,55 @@
+import os
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from dotenv import load_dotenv
+from logging.handlers import RotatingFileHandler
+import logging
+
+# 🔥 LOAD ENV (VERY IMPORTANT - TOP LO)
+load_dotenv()
+
+# Extensions
+db = SQLAlchemy()
+migrate = Migrate()
+login_manager = LoginManager()
+limiter = Limiter(get_remote_address)
+
+
+def create_app():
+    app = Flask(__name__)
+
+    # Config
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change-this-key')
+
+    db_uri = os.getenv('DATABASE_URL', 'sqlite:///chit_fund.db')
+    if db_uri.startswith("postgres://"):
+        db_uri = db_uri.replace("postgres://", "postgresql://")
+
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Init extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    limiter.init_app(app)
+
+    login_manager.login_view = 'login'
+
+    # Logging
+    handler = RotatingFileHandler('app.log', maxBytes=1000000, backupCount=3)
+    handler.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+    handler.setFormatter(formatter)
+    app.logger.addHandler(handler)
+
+    # 🔥 LOAD ROUTES
+    from .routes import *
+
+    print("App created successfully")
+
+    return app

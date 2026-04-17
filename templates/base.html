@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title or "Chit Fund" }}</title>
+    <style>
+        :root {
+            --bg: #f4f7fb;
+            --panel: #ffffff;
+            --ink: #17324d;
+            --muted: #617a91;
+            --brand: #0f766e;
+            --brand-dark: #115e59;
+            --danger: #b42318;
+            --danger-bg: #fef3f2;
+            --success: #027a48;
+            --success-bg: #ecfdf3;
+            --warning: #b54708;
+            --warning-bg: #fffaeb;
+            --line: #d6e2ee;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #edf5f3 0%, var(--bg) 40%, #eef4fb 100%);
+            color: var(--ink);
+        }
+        .page {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 28px 18px 56px;
+        }
+        .card {
+            background: var(--panel);
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+            border: 1px solid rgba(214, 226, 238, 0.8);
+            margin-bottom: 18px;
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        a.button, button, input[type="submit"] {
+            background: var(--brand);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        a.button.secondary, button.secondary {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        button.danger {
+            background: #d92d20;
+        }
+        form.inline {
+            display: inline;
+        }
+        .flash {
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+        }
+        .flash.success { color: var(--success); background: var(--success-bg); }
+        .flash.warning { color: var(--warning); background: var(--warning-bg); }
+        .flash.danger { color: var(--danger); background: var(--danger-bg); }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+        .stat h3 {
+            margin: 0 0 6px;
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+        .stat strong {
+            font-size: 1.8rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border-bottom: 1px solid var(--line);
+            padding: 12px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            color: var(--muted);
+            font-size: 0.88rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .pill {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.84rem;
+            background: #ecfeff;
+            color: #155e75;
+        }
+        .pill.overdue {
+            background: #fef3f2;
+            color: #b42318;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            margin-bottom: 14px;
+        }
+        .split {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 18px;
+        }
+        @media (max-width: 900px) {
+            .split { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        {% if current_user.is_authenticated %}
+        <div class="nav">
+            <div>
+                <strong>Chit Fund Manager</strong><br>
+                <small>{{ current_user.username }} | {{ current_user.role }}</small>
+            </div>
+            <div class="nav-links">
+                <a class="button secondary" href="{{ url_for('core.dashboard') }}">Dashboard</a>
+                <a class="button secondary" href="{{ url_for('payments.history') }}">Payment History</a>
+                {% if current_user.role in ['Admin', 'Manager'] %}
+                <a class="button" href="{{ url_for('members.add_member') }}">Add Member</a>
+                <a class="button" href="{{ url_for('members.create_group') }}">Create Group</a>
+                {% endif %}
+                <a class="button" href="{{ url_for('auth.logout') }}">Logout</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
