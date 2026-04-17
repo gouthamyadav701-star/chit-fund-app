@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Payment History</h2>
+    <table>
+        <tr>
+            <th>Member</th>
+            <th>Group</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Receipt</th>
+        </tr>
+        {% for payment in payments %}
+        <tr>
+            <td>{{ payment.member.name }}</td>
+            <td>{{ payment.member.group.name if payment.member.group else "Unassigned" }}</td>
+            <td>Rs {{ "%.2f"|format(payment.amount) }}</td>
+            <td>{{ payment.formatted_timestamp }}</td>
+            <td><a class="button secondary" href="{{ url_for('payments.receipt', payment_id=payment.id) }}">PDF Receipt</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No payments recorded.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

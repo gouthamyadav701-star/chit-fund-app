@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width: 680px;">
+    <h2>Add Member</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <label>{{ form.name.label }}</label>
+        {{ form.name() }}
+        <label>{{ form.email.label }}</label>
+        {{ form.email() }}
+        <label>{{ form.phone.label }}</label>
+        {{ form.phone() }}
+        <label>{{ form.total_amount.label }}</label>
+        {{ form.total_amount() }}
+        <label>{{ form.group_id.label }}</label>
+        {{ form.group_id() }}
+        {{ form.submit() }}
+    </form>
+</div>
+{% endblock %}

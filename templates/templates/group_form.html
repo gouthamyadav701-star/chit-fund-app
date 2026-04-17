@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width: 680px;">
+    <h2>Create Chit Group</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <label>{{ form.name.label }}</label>
+        {{ form.name() }}
+        <label>{{ form.monthly_amount.label }}</label>
+        {{ form.monthly_amount() }}
+        <label>{{ form.total_members.label }}</label>
+        {{ form.total_members() }}
+        <label>{{ form.start_date.label }}</label>
+        {{ form.start_date() }}
+        {{ form.submit() }}
+    </form>
+</div>
+{% endblock %}

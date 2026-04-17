@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid">
+    <div class="card stat">
+        <h3>Total Collected</h3>
+        <strong>Rs {{ "%.2f"|format(total_paid) }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Total Due</h3>
+        <strong>Rs {{ "%.2f"|format(total_due) }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Portfolio Balance</h3>
+        <strong>Rs {{ "%.2f"|format(total_paid + total_due) }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Active Members</h3>
+        <strong>{{ members|length }}</strong>
+    </div>
+</div>
+
+<div class="split">
+    <div>
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                <h2 style="margin: 0;">Members</h2>
+                <a class="button secondary" href="{{ url_for('payments.export_excel') }}">Export Excel</a>
+            </div>
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Group</th>
+                    <th>Paid</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                {% for member in members %}
+                <tr>
+                    <td>{{ member.name }}</td>
+                    <td>{{ member.phone or member.email or "-" }}</td>
+                    <td>{{ member.group.name if member.group else "Unassigned" }}</td>
+                    <td>Rs {{ "%.2f"|format(member.paid_amount) }}</td>
+                    <td>Rs {{ "%.2f"|format(member.due_amount) }}</td>
+                    <td>
+                        <span class="pill {{ 'overdue' if member.is_overdue else '' }}">
+                            {{ "Overdue" if member.is_overdue else "On Track" }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if current_user.role in ['Admin', 'Manager'] %}
+                        <a class="button secondary" href="{{ url_for('payments.make_payment', member_id=member.id) }}">Pay</a>
+                        <form class="inline" method="post" action="{{ url_for('members.delete_member', member_id=member.id) }}">
+                            {{ action_form.hidden_tag() }}
+                            <button class="danger" type="submit">Archive</button>
+                        </form>
+                        {% else %}
+                        Read only
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7">No members yet.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top: 0;">Chit Groups</h2>
+            <table>
+                <tr>
+                    <th>Group</th>
+                    <th>Monthly</th>
+                    <th>Pool Value</th>
+                    <th>Round</th>
+                    <th>Next Due</th>
+                    <th>Actions</th>
+                </tr>
+                {% for group in groups %}
+                <tr>
+                    <td>{{ group.name }}</td>
+                    <td>Rs {{ "%.2f"|format(group.monthly_amount) }}</td>
+                    <td>Rs {{ "%.2f"|format(group.pool_value) }}</td>
+                    <td>{{ group.current_round }} / {{ group.total_members }}</td>
+                    <td>{{ group.current_due_date.strftime('%d-%m-%Y') if group.current_due_date else '-' }}</td>
+                    <td>
+                        {% if current_user.role in ['Admin', 'Manager'] and group.current_round < group.total_members %}
+                        <form class="inline" method="post" action="{{ url_for('members.advance_round', group_id=group.id) }}">
+                            {{ round_forms[group.id].hidden_tag() }}
+                            {{ round_forms[group.id].next_round() }}
+                            <button type="submit">Advance Round</button>
+                        </form>
+                        {% else %}
+                        Current
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6">No groups created yet.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div>
+        {% if current_user.role == 'Admin' %}
+        <div class="card">
+            <h2 style="margin-top: 0;">Pending Users</h2>
+            {% for user in pending_users %}
+            <div style="padding: 10px 0; border-bottom: 1px solid var(--line);">
+                <strong>{{ user.username }}</strong><br>
+                <small>{{ user.email }} | {{ user.role }}</small><br><br>
+                <form class="inline" method="post" action="{{ url_for('auth.approve_user', user_id=user.id) }}">
+                    {{ action_form.hidden_tag() }}
+                    <button type="submit">Approve</button>
+                </form>
+                <form class="inline" method="post" action="{{ url_for('auth.delete_user', user_id=user.id) }}">
+                    {{ action_form.hidden_tag() }}
+                    <button class="danger" type="submit">Delete</button>
+                </form>
+            </div>
+            {% else %}
+            <p>No approvals waiting.</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <h2 style="margin-top: 0;">Role Rules</h2>
+            <p>Viewers can read dashboards and exports.</p>
+            <p>Managers can add members, create groups, and record payments.</p>
+            <p>Admins can also approve or deactivate users.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
