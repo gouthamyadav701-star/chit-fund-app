@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2 style="margin-top: 0;">Auction Tracker</h2>
+    <table>
+        <tr>
+            <th>Group</th>
+            <th>Cycle</th>
+            <th>Auction Date</th>
+            <th>Status</th>
+            <th>Winner</th>
+            <th>Winning Bid</th>
+            <th>Dividend</th>
+            <th>Actions</th>
+        </tr>
+        {% for cycle in cycles %}
+        <tr>
+            <td>{{ cycle.group.name }}</td>
+            <td>{{ cycle.cycle_number }}</td>
+            <td>{{ cycle.auction_date.strftime('%d-%m-%Y') }}</td>
+            <td>{{ cycle.status }}</td>
+            <td>{{ cycle.winner_membership.member.name if cycle.winner_membership else "-" }}</td>
+            <td>Rs {{ "%.2f"|format(cycle.winning_bid_amount or 0) }}</td>
+            <td>Rs {{ "%.2f"|format(cycle.dividend_per_member or 0) }}</td>
+            <td>
+                {% if current_user.role in ['Admin', 'Manager'] and cycle.status != 'Closed' %}
+                <form class="inline" method="post" action="{{ url_for('auctions.finalize', cycle_id=cycle.id) }}">
+                    {{ close_form.hidden_tag() }}
+                    <button type="submit">Close Auction</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td colspan="8">
+                {% if current_user.role in ['Admin', 'Manager'] and cycle.status != 'Closed' %}
+                <form method="post" action="{{ url_for('auctions.place_bid', cycle_id=cycle.id) }}" style="display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 10px; margin-top: 8px;">
+                    {{ bid_form.hidden_tag() }}
+                    <select name="membership_id">
+                        {% for membership in cycle.group.memberships if membership.status == 'Active' and not membership.deleted and not membership.has_won_auction %}
+                        <option value="{{ membership.id }}">{{ membership.member.name }} - Slot {{ membership.slot_number }} ({{ membership.share_label }})</option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" step="0.01" min="0.01" name="bid_amount" placeholder="Bid amount">
+                    <input type="text" name="note" placeholder="Bid note">
+                    <button type="submit">Place Bid</button>
+                </form>
+                {% if not (cycle.group.memberships | selectattr('status', 'equalto', 'Active') | rejectattr('deleted') | rejectattr('has_won_auction') | list) %}
+                <p style="margin-top: 8px;">All eligible members in this group have already won an auction.</p>
+                {% endif %}
+                {% endif %}
+                {% if cycle.bids %}
+                <p style="margin-top: 10px;"><strong>Bid History</strong></p>
+                <table>
+                    <tr>
+                        <th>Member</th>
+                        <th>Slot</th>
+                        <th>Bid</th>
+                        <th>Winner</th>
+                        <th>Discount</th>
+                    </tr>
+                    {% for bid in cycle.bids %}
+                    <tr>
+                        <td>{{ bid.membership.member.name }}</td>
+                        <td>Slot {{ bid.membership.slot_number }}</td>
+                        <td>Rs {{ "%.2f"|format(bid.bid_amount) }}</td>
+                        <td>{{ "Yes" if bid.is_winner else "No" }}</td>
+                        <td>Rs {{ "%.2f"|format(bid.discount_amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8">No auction cycles yet.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

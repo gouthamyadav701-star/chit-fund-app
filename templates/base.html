@@ -154,6 +154,7 @@
             <div class="nav-links">
                 <a class="button secondary" href="{{ url_for('core.dashboard') }}">Dashboard</a>
                 <a class="button secondary" href="{{ url_for('payments.history') }}">Payment History</a>
+                <a class="button secondary" href="{{ url_for('auctions.index') }}">Auctions</a>
                 {% if current_user.role in ['Admin', 'Manager'] %}
                 <a class="button" href="{{ url_for('members.add_member') }}">Add Member</a>
                 <a class="button" href="{{ url_for('members.create_group') }}">Create Group</a>

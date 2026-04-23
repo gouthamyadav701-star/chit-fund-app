@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="split">
+    <div>
+        <div class="card">
+            <h2 style="margin-top: 0;">{{ member.name }}</h2>
+            {% if current_user.role in ['Admin', 'Manager'] %}
+            <p><a class="button secondary" href="{{ url_for('members.edit_member', member_id=member.id) }}">Edit Member</a></p>
+            {% endif %}
+            <p><a class="button secondary" href="{{ url_for('members.member_history_pdf', member_id=member.id) }}">Download History PDF</a></p>
+            <p>Email: {{ member.email or "-" }}</p>
+            <p>Phone: {{ member.phone or "-" }}</p>
+            <p>Total Paid: Rs {{ "%.2f"|format(member.paid_amount) }}</p>
+            <p>Total Due: Rs {{ "%.2f"|format(member.due_amount) }}</p>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top: 0;">Membership History</h2>
+            <table>
+                <tr>
+                    <th>Group</th>
+                    <th>Slot</th>
+                    <th>Share</th>
+                    <th>Status</th>
+                    <th>Current Status</th>
+                    <th>Monthly Due</th>
+                    <th>Eligible Prize</th>
+                    <th>Outstanding</th>
+                    <th>Dividend</th>
+                </tr>
+                {% for membership in member.memberships %}
+                <tr>
+                    <td>{{ membership.group.name }}</td>
+                    <td>{{ membership.slot_number }}</td>
+                    <td>{{ membership.share_label }}</td>
+                    <td>{{ membership.status }}</td>
+                    <td>{{ membership.payment_status }}</td>
+                    <td>Rs {{ "%.2f"|format(membership.expected_amount) }}</td>
+                    <td>Rs {{ "%.2f"|format(membership.eligible_prize_amount) }}</td>
+                    <td>Rs {{ "%.2f"|format(membership.outstanding_amount) }}</td>
+                    <td>Rs {{ "%.2f"|format(membership.total_dividend) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9">No memberships yet.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top: 0;">Winning History</h2>
+            <table>
+                <tr>
+                    <th>Group</th>
+                    <th>Month/Cycle</th>
+                    <th>Slot</th>
+                    <th>Share</th>
+                    <th>Eligible Prize</th>
+                    <th>Winning Bid</th>
+                    <th>Final Payout</th>
+                    <th>Discount</th>
+                </tr>
+                {% set ns = namespace(has_win=false) %}
+                {% for membership in member.memberships %}
+                    {% for cycle in membership.cycles_won if cycle.status == 'Closed' and not cycle.deleted %}
+                    {% set ns.has_win = true %}
+                    <tr>
+                        <td>{{ cycle.group.name }}</td>
+                        <td>{{ cycle.cycle_number }}</td>
+                        <td>{{ membership.slot_number }}</td>
+                        <td>{{ membership.share_label }}</td>
+                        <td>Rs {{ "%.2f"|format(membership.eligible_prize_amount) }}</td>
+                        <td>Rs {{ "%.2f"|format(cycle.winning_bid_amount or 0) }}</td>
+                        <td>Rs {{ "%.2f"|format(cycle.winner_payout_amount or 0) }}</td>
+                        <td>Rs {{ "%.2f"|format(cycle.discount_amount or 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+                {% if not ns.has_win %}
+                <tr><td colspan="8">This member has not won any chit cycle yet.</td></tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top: 0;">Payment History</h2>
+            <table>
+                <tr>
+                    <th>Group</th>
+                    <th>Cycle</th>
+                    <th>Slot</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                </tr>
+                {% for payment in member.payments %}
+                <tr>
+                    <td>{{ payment.group.name if payment.group else "-" }}</td>
+                    <td>{{ payment.cycle.cycle_number if payment.cycle else "-" }}</td>
+                    <td>{{ payment.membership.slot_number if payment.membership else "-" }}</td>
+                    <td>{{ payment.status }}</td>
+                    <td>Rs {{ "%.2f"|format(payment.amount) }}</td>
+                    <td>{{ payment.formatted_timestamp }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6">No payments yet.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div>
+        <div class="card">
+            <h2 style="margin-top: 0;">Add New Membership</h2>
+            <form method="post" action="{{ url_for('members.add_membership', member_id=member.id) }}">
+                {{ membership_form.hidden_tag() }}
+                <label>{{ membership_form.group_id.label }}</label>
+                {{ membership_form.group_id() }}
+                <label>{{ membership_form.member_number.label }}</label>
+                {{ membership_form.member_number() }}
+                <label>{{ membership_form.share_units.label }}</label>
+                {{ membership_form.share_units() }}
+                {{ membership_form.submit() }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

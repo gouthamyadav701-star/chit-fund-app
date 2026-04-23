@@ -2,25 +2,68 @@
 {% block content %}
 <div class="card">
     <h2>Payment History</h2>
+    <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px;">
+        <div>
+            <label>{{ filter_form.member_id.label }}</label>
+            {{ filter_form.member_id() }}
+        </div>
+        <div>
+            <label>{{ filter_form.group_id.label }}</label>
+            {{ filter_form.group_id() }}
+        </div>
+        <div>
+            <label>{{ filter_form.status.label }}</label>
+            {{ filter_form.status() }}
+        </div>
+        <div>
+            <label>{{ filter_form.date_from.label }}</label>
+            {{ filter_form.date_from() }}
+        </div>
+        <div>
+            <label>{{ filter_form.date_to.label }}</label>
+            {{ filter_form.date_to() }}
+        </div>
+        <div style="display: flex; align-items: end;">
+            {{ filter_form.submit() }}
+        </div>
+    </form>
     <table>
         <tr>
             <th>Member</th>
             <th>Group</th>
+            <th>Cycle</th>
+            <th>Status</th>
             <th>Amount</th>
+            <th>Penalty</th>
             <th>Date</th>
             <th>Receipt</th>
         </tr>
         {% for payment in payments %}
         <tr>
             <td>{{ payment.member.name }}</td>
-            <td>{{ payment.member.group.name if payment.member.group else "Unassigned" }}</td>
+            <td>{{ payment.group.name if payment.group else "Unassigned" }}</td>
+            <td>{{ payment.cycle.cycle_number if payment.cycle else "-" }}</td>
+            <td>{{ payment.status }}</td>
             <td>Rs {{ "%.2f"|format(payment.amount) }}</td>
+            <td>Rs {{ "%.2f"|format(payment.penalty_amount) }}</td>
             <td>{{ payment.formatted_timestamp }}</td>
             <td><a class="button secondary" href="{{ url_for('payments.receipt', payment_id=payment.id) }}">PDF Receipt</a></td>
         </tr>
         {% else %}
-        <tr><td colspan="5">No payments recorded.</td></tr>
+        <tr><td colspan="8">No payments recorded.</td></tr>
         {% endfor %}
     </table>
+</div>
+<div class="card">
+    <h2>Defaulter Watchlist</h2>
+    {% for membership in defaulters %}
+    <p>
+        <strong>{{ membership.member.name }}</strong> - {{ membership.group.name }}<br>
+        Status: {{ membership.payment_status }}<br>
+        Outstanding: Rs {{ "%.2f"|format(membership.outstanding_amount) }}
+    </p>
+    {% else %}
+    <p>No pending or overdue memberships.</p>
+    {% endfor %}
 </div>
 {% endblock %}

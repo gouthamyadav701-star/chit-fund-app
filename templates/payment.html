@@ -6,6 +6,8 @@
     <p>Due Amount: Rs {{ "%.2f"|format(member.due_amount) }}</p>
     <form method="post">
         {{ form.hidden_tag() }}
+        <label>{{ form.membership_id.label }}</label>
+        {{ form.membership_id() }}
         <label>{{ form.amount.label }}</label>
         {{ form.amount() }}
         {{ form.submit() }}
