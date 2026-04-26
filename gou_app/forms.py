@@ -4,7 +4,17 @@ import re
 from datetime import date
 
 from flask_wtf import FlaskForm
-from wtforms import DateField, FloatField, HiddenField, IntegerField, PasswordField, SelectField, StringField, SubmitField
+from wtforms import (
+    DateField,
+    FloatField,
+    HiddenField,
+    IntegerField,
+    PasswordField,
+    SelectField,
+    StringField,
+    SubmitField,
+    TextAreaField,
+)
 from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Optional, Regexp, ValidationError
 
 
@@ -51,15 +61,48 @@ class LoginForm(FlaskForm):
 class MemberForm(FlaskForm):
     name = StringField("Name", validators=[DataRequired()])
     email = StringField("Email", validators=[Optional(), Email()])
-    phone = StringField("Phone", validators=[Optional(), Regexp(r"^\d{10}$", message="Use a 10-digit phone number.")])
+    phone = StringField(
+        "Phone",
+        validators=[
+            DataRequired(message="Phone number is required."),
+            Regexp(r"^\d{10}$", message="Use a 10-digit phone number."),
+        ],
+    )
     total_amount = FloatField("Total Amount", validators=[DataRequired(), NumberRange(min=0.01)])
-    group_id = SelectField("Chit Group", coerce=int, validators=[Optional()])
+    group_id = SelectField("Primary Chit Group", coerce=int, validators=[Optional()])
     submit = SubmitField("Save Member")
 
 
+class MembershipForm(FlaskForm):
+    group_id = SelectField("Register In Group", coerce=int, validators=[DataRequired()])
+    member_number = StringField("Member Number", validators=[Optional()])
+    share_units = SelectField(
+        "Share Type",
+        coerce=float,
+        choices=[(1.0, "Full Chit"), (0.5, "Half Chit"), (0.25, "Quarter Chit")],
+        validators=[DataRequired()],
+        default=1.0,
+    )
+    submit = SubmitField("Add Chit Slot")
+
+
 class PaymentForm(FlaskForm):
+    membership_id = SelectField("Membership", coerce=int, validators=[DataRequired()])
     amount = FloatField("Amount", validators=[DataRequired(), NumberRange(min=0.01)])
     submit = SubmitField("Record Payment")
+
+
+class PaymentFilterForm(FlaskForm):
+    member_id = SelectField("Member", coerce=int, validators=[Optional()])
+    group_id = SelectField("Group", coerce=int, validators=[Optional()])
+    status = SelectField(
+        "Status",
+        choices=[("", "All"), ("Paid", "Paid"), ("Partial", "Partial"), ("Pending", "Pending"), ("Overdue", "Overdue")],
+        validators=[Optional()],
+    )
+    date_from = DateField("From", validators=[Optional()])
+    date_to = DateField("To", validators=[Optional()])
+    submit = SubmitField("Apply")
 
 
 class ChitGroupForm(FlaskForm):
@@ -67,9 +110,21 @@ class ChitGroupForm(FlaskForm):
     monthly_amount = FloatField("Monthly Amount", validators=[DataRequired(), NumberRange(min=0.01)])
     total_members = IntegerField("Total Members", validators=[DataRequired(), NumberRange(min=1)])
     start_date = DateField("Start Date", validators=[DataRequired()], default=date.today)
+    auction_day = IntegerField("Auction Day Of Month", validators=[DataRequired(), NumberRange(min=1, max=28)], default=5)
     submit = SubmitField("Create Group")
 
 
 class RoundForm(FlaskForm):
     next_round = HiddenField("Next Round", validators=[DataRequired()])
     submit = SubmitField("Advance Round")
+
+
+class AuctionBidForm(FlaskForm):
+    membership_id = SelectField("Winner", coerce=int, validators=[DataRequired()])
+    bid_amount = FloatField("Payout Amount", validators=[DataRequired(), NumberRange(min=0.01)])
+    note = TextAreaField("Note", validators=[Optional()])
+    submit = SubmitField("Save Winner")
+
+
+class AuctionCloseForm(FlaskForm):
+    submit = SubmitField("Close Auction")

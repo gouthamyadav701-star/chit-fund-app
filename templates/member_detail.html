@@ -1,21 +1,45 @@
 {% extends "base.html" %}
+{% block title %}Member Detail{% endblock %}
+{% block topbar_title %}Member Detail{% endblock %}
 {% block content %}
 <div class="split">
-    <div>
+    <div class="stack">
         <div class="card">
-            <h2 style="margin-top: 0;">{{ member.name }}</h2>
-            {% if current_user.role in ['Admin', 'Manager'] %}
-            <p><a class="button secondary" href="{{ url_for('members.edit_member', member_id=member.id) }}">Edit Member</a></p>
-            {% endif %}
-            <p><a class="button secondary" href="{{ url_for('members.member_history_pdf', member_id=member.id) }}">Download History PDF</a></p>
-            <p>Email: {{ member.email or "-" }}</p>
-            <p>Phone: {{ member.phone or "-" }}</p>
-            <p>Total Paid: Rs {{ "%.2f"|format(member.paid_amount) }}</p>
-            <p>Total Due: Rs {{ "%.2f"|format(member.due_amount) }}</p>
+            <div class="page-header">
+                <div>
+                    <h2 style="margin:0;">{{ member.name }}</h2>
+                    <p class="muted" style="margin:8px 0 0;">Customer ledger and chit slot overview</p>
+                </div>
+                <div class="actions">
+                    {% if current_user.role in ['Admin', 'Manager'] %}
+                    <a class="button secondary" href="{{ url_for('members.edit_member', member_id=member.id) }}">Edit Member</a>
+                    {% endif %}
+                    <a class="button secondary" href="{{ url_for('members.member_history_pdf', member_id=member.id) }}">Download History PDF</a>
+                </div>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+                <div>
+                    <p class="eyebrow">Email</p>
+                    <div>{{ member.email or "-" }}</div>
+                </div>
+                <div>
+                    <p class="eyebrow">Phone</p>
+                    <div>{{ member.phone or "-" }}</div>
+                </div>
+                <div>
+                    <p class="eyebrow">Total Paid</p>
+                    <div class="metric mono" style="font-size:22px;">Rs {{ "%.2f"|format(member.paid_amount) }}</div>
+                </div>
+                <div>
+                    <p class="eyebrow">Total Due</p>
+                    <div class="metric mono" style="font-size:22px;">Rs {{ "%.2f"|format(member.due_amount) }}</div>
+                </div>
+            </div>
         </div>
 
         <div class="card">
             <h2 style="margin-top: 0;">Membership History</h2>
+            <div class="table-wrap">
             <table>
                 <tr>
                     <th>Group</th>
@@ -44,10 +68,12 @@
                 <tr><td colspan="9">No memberships yet.</td></tr>
                 {% endfor %}
             </table>
+            </div>
         </div>
 
         <div class="card">
             <h2 style="margin-top: 0;">Winning History</h2>
+            <div class="table-wrap">
             <table>
                 <tr>
                     <th>Group</th>
@@ -79,10 +105,12 @@
                 <tr><td colspan="8">This member has not won any chit cycle yet.</td></tr>
                 {% endif %}
             </table>
+            </div>
         </div>
 
         <div class="card">
             <h2 style="margin-top: 0;">Payment History</h2>
+            <div class="table-wrap">
             <table>
                 <tr>
                     <th>Group</th>
@@ -105,6 +133,7 @@
                 <tr><td colspan="6">No payments yet.</td></tr>
                 {% endfor %}
             </table>
+            </div>
         </div>
     </div>
 

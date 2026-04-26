@@ -9,7 +9,9 @@ from .blueprints.core import core_bp
 from .blueprints.members import members_bp
 from .blueprints.payments import payments_bp
 from .config import Config
-from .extensions import csrf, db, limiter, login_manager, mail, migrate
+from .blueprints.api import api_bp
+from .blueprints.auctions import auctions_bp
+from .extensions import bcrypt, csrf, db, limiter, login_manager, mail, migrate
 
 
 def configure_logging(app: Flask) -> None:
@@ -31,12 +33,15 @@ def create_app() -> Flask:
 
     db.init_app(app)
     migrate.init_app(app, db)
+    bcrypt.init_app(app)
     csrf.init_app(app)
     mail.init_app(app)
     limiter.init_app(app)
     login_manager.init_app(app)
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(api_bp)
+    app.register_blueprint(auctions_bp)
     app.register_blueprint(core_bp)
     app.register_blueprint(members_bp)
     app.register_blueprint(payments_bp)

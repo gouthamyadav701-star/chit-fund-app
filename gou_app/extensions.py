@@ -1,3 +1,4 @@
+from flask_bcrypt import Bcrypt
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
@@ -12,5 +13,6 @@ csrf = CSRFProtect()
 mail = Mail()
 limiter = Limiter(key_func=get_remote_address, default_limits=["500/hour"])
 login_manager = LoginManager()
+bcrypt = Bcrypt()
 login_manager.login_view = "auth.login"
 login_manager.login_message_category = "warning"

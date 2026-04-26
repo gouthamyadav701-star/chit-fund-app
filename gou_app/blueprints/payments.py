@@ -1,11 +1,11 @@
-from flask import Blueprint, current_app, flash, redirect, render_template, send_file, url_for
+from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from ..decorators import manager_required
 from ..extensions import db
-from ..forms import PaymentForm
-from ..models import Member, Payment
-from ..services import build_payment_excel, build_receipt_pdf, queue_payment_notifications
+from ..forms import PaymentFilterForm, PaymentForm
+from ..models import ChitGroup, GroupMembership, Member, Payment
+from ..services import build_payment_excel, build_receipt_pdf, create_payment, pending_memberships, queue_payment_notifications
 
 payments_bp = Blueprint("payments", __name__)
 
@@ -15,31 +15,16 @@ payments_bp = Blueprint("payments", __name__)
 def make_payment(member_id):
     member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
     form = PaymentForm()
+    active_memberships = [membership for membership in member.active_memberships if membership.group and not membership.deleted]
+    form.membership_id.choices = [(membership.id, f"{membership.display_label} - {membership.payment_status}") for membership in active_memberships]
 
     if form.validate_on_submit():
-        amount = round(form.amount.data, 2)
-        if amount > member.due_amount:
-            flash(f"Overpayment not allowed. Due is Rs {member.due_amount:.2f}.", "danger")
-            return render_template("payment.html", form=form, member=member)
-
-        try:
-            payment = Payment(
-                member_id=member.id,
-                amount=amount,
-                created_by=current_user.id,
-                updated_by=current_user.id,
-            )
-            member.paid_amount = round(float(member.paid_amount) + amount, 2)
-            member.updated_by = current_user.id
-            db.session.add(payment)
-            db.session.commit()
-            queue_payment_notifications(member, payment)
-            flash(f"Payment of Rs {amount:.2f} added for {member.name}.", "success")
-            return redirect(url_for("core.dashboard"))
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception("Payment failed for member %s", member.id)
-            flash("The payment could not be recorded.", "danger")
+        membership = GroupMembership.query.filter_by(id=form.membership_id.data, deleted=False).first_or_404()
+        payment = create_payment(member, membership, round(form.amount.data, 2), current_user.id)
+        db.session.commit()
+        queue_payment_notifications(member, payment)
+        flash(f"Payment of Rs {float(payment.amount):.2f} added for {member.name}.", "success")
+        return redirect(url_for("core.dashboard"))
 
     return render_template("payment.html", form=form, member=member)
 
@@ -47,12 +32,27 @@ def make_payment(member_id):
 @payments_bp.route("/payments/history")
 @login_required
 def history():
-    payments = (
-        Payment.query.filter_by(deleted=False)
-        .order_by(Payment.timestamp.desc())
-        .all()
-    )
-    return render_template("history.html", payments=payments)
+    form = PaymentFilterForm(request.args)
+    members = Member.query.filter_by(deleted=False).order_by(Member.name).all()
+    groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+    form.member_id.choices = [(0, "All Members")] + [(member.id, member.name) for member in members]
+    form.group_id.choices = [(0, "All Groups")] + [(group.id, group.name) for group in groups]
+
+    query = Payment.query.filter_by(deleted=False)
+    if form.member_id.data:
+        query = query.filter_by(member_id=form.member_id.data)
+    if form.group_id.data:
+        query = query.filter_by(group_id=form.group_id.data)
+    if form.status.data:
+        query = query.filter_by(status=form.status.data)
+    if form.date_from.data:
+        query = query.filter(Payment.timestamp >= form.date_from.data)
+    if form.date_to.data:
+        query = query.filter(Payment.timestamp <= form.date_to.data)
+
+    payments = query.order_by(Payment.timestamp.desc()).all()
+    defaulters = pending_memberships(form.group_id.data or None)
+    return render_template("history.html", payments=payments, defaulters=defaulters, filter_form=form)
 
 
 @payments_bp.route("/payments/export")

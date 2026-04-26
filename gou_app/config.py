@@ -33,3 +33,4 @@ class Config:
     TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
 
     APP_LOG_FILE = os.environ.get("APP_LOG_FILE", "logs/chitfund.log")
+    PENALTY_RATE_PERCENT = float(os.environ.get("PENALTY_RATE_PERCENT", 2.0))

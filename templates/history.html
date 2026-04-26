@@ -1,7 +1,11 @@
 {% extends "base.html" %}
+{% block title %}Payment History{% endblock %}
+{% block topbar_title %}Payment History{% endblock %}
 {% block content %}
 <div class="card">
-    <h2>Payment History</h2>
+    <div class="page-header">
+        <h2 style="margin:0;">Payment History</h2>
+    </div>
     <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px;">
         <div>
             <label>{{ filter_form.member_id.label }}</label>
@@ -27,6 +31,7 @@
             {{ filter_form.submit() }}
         </div>
     </form>
+    <div class="table-wrap">
     <table>
         <tr>
             <th>Member</th>
@@ -53,13 +58,14 @@
         <tr><td colspan="8">No payments recorded.</td></tr>
         {% endfor %}
     </table>
+    </div>
 </div>
 <div class="card">
     <h2>Defaulter Watchlist</h2>
     {% for membership in defaulters %}
-    <p>
+    <p style="padding-bottom:12px;border-bottom:1px solid var(--line);">
         <strong>{{ membership.member.name }}</strong> - {{ membership.group.name }}<br>
-        Status: {{ membership.payment_status }}<br>
+        <span class="muted">Status: {{ membership.payment_status }}</span><br>
         Outstanding: Rs {{ "%.2f"|format(membership.outstanding_amount) }}
     </p>
     {% else %}

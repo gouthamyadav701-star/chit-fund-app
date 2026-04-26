@@ -1,9 +1,9 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 
 from ..decorators import admin_required
-from ..extensions import db, limiter
+from ..extensions import bcrypt, db, limiter
 from ..forms import EmptyForm, LoginForm, RegisterForm
 from ..models import User
 
@@ -29,7 +29,7 @@ def register():
             new_user = User(
                 username=form.username.data.strip(),
                 email=form.email.data.strip().lower(),
-                password_hash=generate_password_hash(form.password.data),
+                password_hash=bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
                 role="Admin" if first_user else form.role.data,
                 is_approved=first_user,
             )
@@ -54,7 +54,14 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data.strip(), deleted=False).first()
-        if not user or not check_password_hash(user.password_hash, form.password.data):
+        password_ok = False
+        if user:
+            try:
+                password_ok = bcrypt.check_password_hash(user.password_hash, form.password.data)
+            except ValueError:
+                password_ok = check_password_hash(user.password_hash, form.password.data)
+
+        if not user or not password_ok:
             current_app.logger.warning("Failed login for %s from %s", form.username.data, request.remote_addr)
             flash("Invalid credentials.", "danger")
             return render_template("login.html", form=form)

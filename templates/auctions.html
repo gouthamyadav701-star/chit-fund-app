@@ -1,7 +1,62 @@
 {% extends "base.html" %}
+{% block title %}Auctions{% endblock %}
+{% block topbar_title %}Auctions{% endblock %}
 {% block content %}
 <div class="card">
-    <h2 style="margin-top: 0;">Auction Tracker</h2>
+    <div class="page-header">
+        <div>
+            <h2 style="margin:0;">Auction Amount Calculator</h2>
+            <p class="muted" style="margin:8px 0 0;">Member current month and monthly payment enter చేస్తే, ఆ నెల winner కి ఇవ్వాల్సిన total amount auto-calculate అవుతుంది.</p>
+        </div>
+    </div>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div>
+            <label for="calc-cycle-month">Month / Cycle</label>
+            <input id="calc-cycle-month" type="number" min="1" placeholder="Example: 8">
+        </div>
+        <div>
+            <label for="calc-monthly-amount">Monthly Amount Paid</label>
+            <input id="calc-monthly-amount" type="number" step="0.01" min="0" placeholder="Example: 16000 or 8000">
+        </div>
+        <div>
+            <label for="calc-reference">Reference Full Month Amount</label>
+            <input id="calc-reference" type="number" step="0.01" min="1" value="16000">
+        </div>
+        <div>
+            <label for="calc-share-note">Share Summary</label>
+            <input id="calc-share-note" type="text" value="Auto from monthly amount" readonly>
+        </div>
+    </div>
+    <div class="actions" style="margin-top: 6px;">
+        <button type="button" id="calc-reset-btn" class="secondary">Reset</button>
+    </div>
+    <div class="grid" style="margin-top: 18px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="card stat" style="margin-bottom:0;">
+            <h3>Chart Full Prize</h3>
+            <strong id="calc-chart-full" class="mono">Rs 0.00</strong>
+        </div>
+        <div class="card stat" style="margin-bottom:0;">
+            <h3>Winner Amount</h3>
+            <strong id="calc-payable" class="mono">Rs 0.00</strong>
+        </div>
+        <div class="card stat" style="margin-bottom:0;">
+            <h3>Share Ratio</h3>
+            <strong id="calc-share-ratio" class="mono">0.00x</strong>
+        </div>
+        <div class="card stat" style="margin-bottom:0;">
+            <h3>Share Summary</h3>
+            <strong id="calc-summary" class="mono">Month -</strong>
+        </div>
+    </div>
+    <p class="muted" style="margin:16px 0 0;">
+        Example: month `4`, monthly amount `10400`, reference full month amount `16000` ఇస్తే,
+        chart full prize నుండి proportionate winner amount calculate అవుతుంది.
+    </p>
+</div>
+
+<div class="card">
+    <h2 style="margin-top: 0;">Winner Allocation Tracker</h2>
+    <div class="table-wrap">
     <table>
         <tr>
             <th>Group</th>
@@ -9,7 +64,7 @@
             <th>Auction Date</th>
             <th>Status</th>
             <th>Winner</th>
-            <th>Winning Bid</th>
+            <th>Payout</th>
             <th>Dividend</th>
             <th>Actions</th>
         </tr>
@@ -23,11 +78,10 @@
             <td>Rs {{ "%.2f"|format(cycle.winning_bid_amount or 0) }}</td>
             <td>Rs {{ "%.2f"|format(cycle.dividend_per_member or 0) }}</td>
             <td>
-                {% if current_user.role in ['Admin', 'Manager'] and cycle.status != 'Closed' %}
-                <form class="inline" method="post" action="{{ url_for('auctions.finalize', cycle_id=cycle.id) }}">
-                    {{ close_form.hidden_tag() }}
-                    <button type="submit">Close Auction</button>
-                </form>
+                {% if cycle.status == 'Closed' %}
+                <span class="pill">Winner Saved</span>
+                {% else %}
+                <span class="muted">Waiting</span>
                 {% endif %}
             </td>
         </tr>
@@ -41,21 +95,22 @@
                         <option value="{{ membership.id }}">{{ membership.member.name }} - Slot {{ membership.slot_number }} ({{ membership.share_label }})</option>
                         {% endfor %}
                     </select>
-                    <input type="number" step="0.01" min="0.01" name="bid_amount" placeholder="Bid amount">
-                    <input type="text" name="note" placeholder="Bid note">
-                    <button type="submit">Place Bid</button>
+                    <input type="number" step="0.01" min="0.01" name="bid_amount" placeholder="Payout amount">
+                    <input type="text" name="note" placeholder="Winner note">
+                    <button type="submit">Save Winner</button>
                 </form>
                 {% if not (cycle.group.memberships | selectattr('status', 'equalto', 'Active') | rejectattr('deleted') | rejectattr('has_won_auction') | list) %}
-                <p style="margin-top: 8px;">All eligible members in this group have already won an auction.</p>
+                <p style="margin-top: 8px;">All eligible chit slots in this group have already won once.</p>
                 {% endif %}
                 {% endif %}
                 {% if cycle.bids %}
-                <p style="margin-top: 10px;"><strong>Bid History</strong></p>
+                <p style="margin-top: 10px;"><strong>Winner History</strong></p>
+                <div class="table-wrap">
                 <table>
                     <tr>
                         <th>Member</th>
                         <th>Slot</th>
-                        <th>Bid</th>
+                        <th>Payout</th>
                         <th>Winner</th>
                         <th>Discount</th>
                     </tr>
@@ -69,6 +124,7 @@
                     </tr>
                     {% endfor %}
                 </table>
+                </div>
                 {% endif %}
             </td>
         </tr>
@@ -76,5 +132,92 @@
         <tr><td colspan="8">No auction cycles yet.</td></tr>
         {% endfor %}
     </table>
+    </div>
 </div>
+<script>
+    (function () {
+        const monthPrizeMap = {
+            1: 300000,
+            2: 305000,
+            3: 310000,
+            4: 315000,
+            5: 320000,
+            6: 325000,
+            7: 330000,
+            8: 335000,
+            9: 340000,
+            10: 345000,
+            11: 350000,
+            12: 355000,
+            13: 360000,
+            14: 365000,
+            15: 370000,
+            16: 380000,
+            17: 390000,
+            18: 400000,
+            19: 410000,
+            20: 425000,
+            21: 440000,
+            22: 455000,
+            23: 470000,
+            24: 485000,
+            25: 500000
+        };
+
+        const monthInput = document.getElementById("calc-cycle-month");
+        const monthlyAmountInput = document.getElementById("calc-monthly-amount");
+        const referenceInput = document.getElementById("calc-reference");
+        const shareNoteInput = document.getElementById("calc-share-note");
+        const chartFullOutput = document.getElementById("calc-chart-full");
+        const payableOutput = document.getElementById("calc-payable");
+        const shareRatioOutput = document.getElementById("calc-share-ratio");
+        const summaryOutput = document.getElementById("calc-summary");
+        const resetBtn = document.getElementById("calc-reset-btn");
+
+        function formatCurrency(value) {
+            return "Rs " + Number(value || 0).toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function shareLabel(ratio) {
+            if (ratio === 1) return "Full Chit";
+            if (ratio === 0.5) return "Half Chit";
+            if (ratio === 0.25) return "Quarter Chit";
+            if (ratio === 2) return "Double Chit";
+            return ratio.toFixed(2) + "x Share";
+        }
+
+        function recalculate() {
+            const cycleMonth = Number(monthInput.value || 0);
+            const monthlyAmount = Number(monthlyAmountInput.value || 0);
+            const referenceAmount = Number(referenceInput.value || 16000);
+            const chartFullPrize = monthPrizeMap[cycleMonth] || 0;
+            const shareRatio = referenceAmount > 0 ? (monthlyAmount / referenceAmount) : 0;
+            const winnerAmount = chartFullPrize * shareRatio;
+
+            chartFullOutput.textContent = formatCurrency(chartFullPrize);
+            payableOutput.textContent = formatCurrency(winnerAmount);
+            shareRatioOutput.textContent = shareRatio.toFixed(2) + "x";
+            shareNoteInput.value = shareLabel(shareRatio || 0);
+            summaryOutput.textContent = cycleMonth ? ("Month " + cycleMonth + " · " + shareLabel(shareRatio || 0)) : "Month -";
+        }
+
+        [monthInput, monthlyAmountInput, referenceInput].forEach((element) => {
+            element.addEventListener("input", recalculate);
+            element.addEventListener("change", recalculate);
+        });
+
+        resetBtn.addEventListener("click", function () {
+            monthInput.value = "";
+            monthlyAmountInput.value = "";
+            referenceInput.value = "16000";
+            shareNoteInput.value = "Auto from monthly amount";
+            recalculate();
+        });
+
+        recalculate();
+    })();
+</script>
 {% endblock %}
