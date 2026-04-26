@@ -3,173 +3,508 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ title or "Chit Fund" }}</title>
+    <title>{% block title %}{{ title or "Balaji Chit Fund" }}{% endblock %}</title>
+    <meta name="theme-color" content="#14b8a6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Balaji Chit">
+    <link rel="manifest" href="{{ url_for('core.manifest') }}">
+    <link rel="icon" href="{{ url_for('core.pwa_icon') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('core.pwa_icon') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f4f7fb;
-            --panel: #ffffff;
-            --ink: #17324d;
-            --muted: #617a91;
-            --brand: #0f766e;
-            --brand-dark: #115e59;
-            --danger: #b42318;
-            --danger-bg: #fef3f2;
-            --success: #027a48;
-            --success-bg: #ecfdf3;
-            --warning: #b54708;
-            --warning-bg: #fffaeb;
-            --line: #d6e2ee;
+            --bg: #0d1017;
+            --bg2: #141927;
+            --bg3: #1a2233;
+            --panel: rgba(19, 24, 37, 0.92);
+            --line: rgba(173, 184, 204, 0.12);
+            --line-strong: rgba(173, 184, 204, 0.2);
+            --text: #e7edf8;
+            --muted: #98a7c2;
+            --brand: #14b8a6;
+            --brand-soft: rgba(20, 184, 166, 0.16);
+            --brand-strong: #0f766e;
+            --info: #60a5fa;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --shadow: 0 24px 55px rgba(0, 0, 0, 0.35);
+            --radius: 18px;
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(180deg, #edf5f3 0%, var(--bg) 40%, #eef4fb 100%);
-            color: var(--ink);
+            min-height: 100vh;
+            font-family: "DM Sans", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 28%),
+                radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 24%),
+                linear-gradient(180deg, #0b0f16 0%, #0f1420 100%);
+            color: var(--text);
         }
-        .page {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 28px 18px 56px;
+        a { color: inherit; }
+        .layout {
+            min-height: 100vh;
+            display: flex;
         }
-        .card {
-            background: var(--panel);
-            border-radius: 18px;
-            padding: 22px;
-            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
-            border: 1px solid rgba(214, 226, 238, 0.8);
+        .sidebar {
+            width: 250px;
+            background: rgba(10, 14, 22, 0.92);
+            border-right: 1px solid var(--line);
+            padding: 22px 16px 18px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(14px);
+        }
+        .brand-block {
+            padding: 8px 10px 18px;
+            border-bottom: 1px solid var(--line);
             margin-bottom: 18px;
         }
-        .nav {
+        .brand-mark {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+        .brand-sub {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 12px;
+            font-family: "DM Mono", monospace;
+        }
+        .nav-section {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin: 16px 10px 8px;
+        }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 4px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--muted);
+            transition: 0.18s ease;
+        }
+        .nav-link:hover,
+        .nav-link.active {
+            background: var(--brand-soft);
+            color: #d8fffb;
+        }
+        .nav-footer {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+        }
+        .install-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 14px 16px;
+            background: rgba(20, 184, 166, 0.12);
+            border: 1px solid rgba(20, 184, 166, 0.2);
+            border-radius: 16px;
+        }
+        .install-banner.show {
+            display: flex;
+        }
+        .main {
+            flex: 1;
+            min-width: 0;
+        }
+        .topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
+            padding: 22px 28px 14px;
+        }
+        .topbar-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+        .topbar-meta {
+            color: var(--muted);
+            font-size: 12px;
+            font-family: "DM Mono", monospace;
+        }
+        .page {
+            padding: 0 28px 36px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 22px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
             margin-bottom: 18px;
         }
-        .nav-links {
+        .page-header {
             display: flex;
-            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .page-header h1, .page-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
             flex-wrap: wrap;
         }
-        a.button, button, input[type="submit"] {
-            background: var(--brand);
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            padding: 10px 14px;
-            text-decoration: none;
-            cursor: pointer;
-            font-size: 0.95rem;
-        }
-        a.button.secondary, button.secondary {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-        button.danger {
-            background: #d92d20;
-        }
-        form.inline {
-            display: inline;
-        }
-        .flash {
-            padding: 12px 14px;
-            border-radius: 12px;
-            margin-bottom: 14px;
-        }
-        .flash.success { color: var(--success); background: var(--success-bg); }
-        .flash.warning { color: var(--warning); background: var(--warning-bg); }
-        .flash.danger { color: var(--danger); background: var(--danger-bg); }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
         }
-        .stat h3 {
-            margin: 0 0 6px;
-            font-size: 0.95rem;
+        .split {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+            gap: 18px;
+        }
+        .stack {
+            display: grid;
+            gap: 18px;
+        }
+        .stat h3,
+        .eyebrow {
+            margin: 0 0 8px;
             color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
-        .stat strong {
-            font-size: 1.8rem;
+        .stat strong,
+        .metric {
+            font-size: 30px;
+            line-height: 1.1;
+            font-weight: 700;
+            letter-spacing: -0.04em;
         }
+        .muted { color: var(--muted); }
+        .mono { font-family: "DM Mono", monospace; }
+        .table-wrap { overflow-x: auto; }
         table {
             width: 100%;
             border-collapse: collapse;
         }
         th, td {
             border-bottom: 1px solid var(--line);
-            padding: 12px 8px;
+            padding: 12px 10px;
             text-align: left;
             vertical-align: top;
         }
         th {
             color: var(--muted);
-            font-size: 0.88rem;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.08em;
+            font-weight: 600;
         }
-        .pill {
-            display: inline-block;
-            border-radius: 999px;
-            padding: 4px 10px;
-            font-size: 0.84rem;
-            background: #ecfeff;
-            color: #155e75;
-        }
-        .pill.overdue {
-            background: #fef3f2;
-            color: #b42318;
+        tr:last-child td {
+            border-bottom: none;
         }
         label {
             display: block;
+            color: var(--muted);
+            font-size: 12px;
             font-weight: 600;
             margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
         }
-        input, select {
+        input, select, textarea {
             width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
+            padding: 11px 12px;
+            border-radius: 12px;
             border: 1px solid var(--line);
+            background: rgba(13, 16, 23, 0.75);
+            color: var(--text);
             margin-bottom: 14px;
+            font: inherit;
         }
-        .split {
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: rgba(20, 184, 166, 0.55);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+        }
+        a.button, button, input[type="submit"], .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--brand) 0%, #0f766e 100%);
+            color: #041312;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 14px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            transition: transform 0.14s ease, opacity 0.14s ease;
+        }
+        a.button:hover, button:hover, input[type="submit"]:hover, .button:hover {
+            transform: translateY(-1px);
+            opacity: 0.96;
+        }
+        a.button.secondary, button.secondary, .button.secondary {
+            background: rgba(96, 165, 250, 0.12);
+            color: #bfdcff;
+            border: 1px solid rgba(96, 165, 250, 0.18);
+        }
+        button.danger, .button.danger {
+            background: rgba(248, 113, 113, 0.14);
+            color: #ffc9c9;
+            border: 1px solid rgba(248, 113, 113, 0.18);
+        }
+        .button.small, .btn-sm, button.btn-sm {
+            padding: 7px 10px;
+            font-size: 12px;
+        }
+        form.inline {
+            display: inline;
+        }
+        .flash {
+            padding: 12px 14px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+            border: 1px solid transparent;
+        }
+        .flash.success { color: #a7f3d0; background: rgba(52, 211, 153, 0.12); border-color: rgba(52, 211, 153, 0.22); }
+        .flash.warning { color: #fde68a; background: rgba(251, 191, 36, 0.12); border-color: rgba(251, 191, 36, 0.22); }
+        .flash.danger { color: #fecaca; background: rgba(248, 113, 113, 0.12); border-color: rgba(248, 113, 113, 0.22); }
+        .flash.info { color: #bfdbfe; background: rgba(96, 165, 250, 0.12); border-color: rgba(96, 165, 250, 0.22); }
+        .pill, .badge {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            background: rgba(96, 165, 250, 0.12);
+            color: #bfdbfe;
+        }
+        .pill.overdue, .badge-danger {
+            background: rgba(248, 113, 113, 0.12);
+            color: #fecaca;
+        }
+        .badge-success {
+            background: rgba(52, 211, 153, 0.12);
+            color: #a7f3d0;
+        }
+        .badge-warning {
+            background: rgba(251, 191, 36, 0.12);
+            color: #fde68a;
+        }
+        .progress {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            height: 7px;
+            overflow: hidden;
+            width: 110px;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--brand) 0%, #2dd4bf 100%);
+        }
+        .progress-bar.done { background: linear-gradient(90deg, var(--success) 0%, #6ee7b7 100%); }
+        .progress-bar.overdue { background: linear-gradient(90deg, var(--danger) 0%, #fca5a5 100%); }
+        .auth-shell {
+            min-height: 100vh;
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 18px;
+            place-items: center;
+            padding: 24px;
         }
-        @media (max-width: 900px) {
-            .split { grid-template-columns: 1fr; }
+        .auth-card {
+            width: min(460px, 100%);
+            background: rgba(13, 18, 28, 0.94);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 34px 28px;
+        }
+        .auth-card.wide {
+            width: min(560px, 100%);
+        }
+        .auth-title {
+            margin: 0 0 8px;
+            font-size: 28px;
+            letter-spacing: -0.04em;
+        }
+        .auth-subtitle {
+            margin: 0 0 24px;
+            color: var(--muted);
+        }
+        .auth-link {
+            margin-top: 14px;
+            color: var(--muted);
+            text-align: center;
+        }
+        .auth-link a {
+            color: #a7f3d0;
+            text-decoration: none;
+        }
+        @media (max-width: 980px) {
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+            }
+            .layout {
+                flex-direction: column;
+            }
+            .topbar, .page {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+            .split {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="page">
-        {% if current_user.is_authenticated %}
-        <div class="nav">
-            <div>
-                <strong>Chit Fund Manager</strong><br>
-                <small>{{ current_user.username }} | {{ current_user.role }}</small>
+    {% if current_user.is_authenticated %}
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand-block">
+                <div class="brand-mark">◈ Balaji Chit Funds</div>
+                <div class="brand-sub">secure chit operations</div>
             </div>
-            <div class="nav-links">
-                <a class="button secondary" href="{{ url_for('core.dashboard') }}">Dashboard</a>
-                <a class="button secondary" href="{{ url_for('payments.history') }}">Payment History</a>
-                {% if current_user.role in ['Admin', 'Manager'] %}
-                <a class="button" href="{{ url_for('members.add_member') }}">Add Member</a>
-                <a class="button" href="{{ url_for('members.create_group') }}">Create Group</a>
-                {% endif %}
-                <a class="button" href="{{ url_for('auth.logout') }}">Logout</a>
+
+            <div class="nav-section">Overview</div>
+            <a class="nav-link {% if request.endpoint == 'core.dashboard' %}active{% endif %}" href="{{ url_for('core.dashboard') }}">Dashboard</a>
+
+            <div class="nav-section">Operations</div>
+            <a class="nav-link {% if 'members' in request.endpoint %}active{% endif %}" href="{{ url_for('members.add_member') }}">Members</a>
+            <a class="nav-link {% if request.endpoint == 'payments.history' %}active{% endif %}" href="{{ url_for('payments.history') }}">Payments</a>
+            <a class="nav-link {% if 'auctions' in request.endpoint %}active{% endif %}" href="{{ url_for('auctions.index') }}">Auctions</a>
+
+            {% if current_user.role in ['Admin', 'Manager'] %}
+            <div class="nav-section">Quick Actions</div>
+            <a class="nav-link" href="{{ url_for('members.add_member') }}">Add Member</a>
+            <a class="nav-link" href="{{ url_for('members.create_group') }}">Create Group</a>
+            {% endif %}
+
+            <div class="nav-footer">
+                <button id="install-app-btn" class="button secondary" type="button" style="width:100%;display:none;">Install App</button>
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
             </div>
-        </div>
-        {% endif %}
+        </aside>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
+        <main class="main">
+            <div class="topbar">
+                <div>
+                    <div class="topbar-title">{% block topbar_title %}Chit Fund Dashboard{% endblock %}</div>
+                    <div class="topbar-meta">{{ current_user.role }} · {{ current_user.username }}</div>
+                </div>
+            </div>
+            <div class="page">
+                <div id="install-banner" class="install-banner">
+                    <div>
+                        <strong>Install Balaji Chit Funds</strong><br>
+                        <span class="muted">Open it like a mobile app from your home screen.</span>
+                    </div>
+                    <button id="install-banner-btn" type="button">Install</button>
+                </div>
+    {% else %}
+    <div class="auth-shell">
+        <div style="width:min(560px,100%)">
+    {% endif %}
 
-        {% block content %}{% endblock %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+
+    {% if current_user.is_authenticated %}
+            </div>
+        </main>
     </div>
+    {% else %}
+        </div>
+    </div>
+    {% endif %}
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", function () {
+                navigator.serviceWorker.register("{{ url_for('core.service_worker') }}").catch(function () {});
+            });
+        }
+
+        let deferredPrompt = null;
+        const installBtn = document.getElementById("install-app-btn");
+        const installBanner = document.getElementById("install-banner");
+        const installBannerBtn = document.getElementById("install-banner-btn");
+
+        function showInstallUI() {
+            if (installBtn) {
+                installBtn.style.display = "inline-flex";
+            }
+            if (installBanner) {
+                installBanner.classList.add("show");
+            }
+        }
+
+        function hideInstallUI() {
+            if (installBtn) {
+                installBtn.style.display = "none";
+            }
+            if (installBanner) {
+                installBanner.classList.remove("show");
+            }
+        }
+
+        async function triggerInstall() {
+            if (!deferredPrompt) {
+                return;
+            }
+            deferredPrompt.prompt();
+            await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            hideInstallUI();
+        }
+
+        window.addEventListener("beforeinstallprompt", function (event) {
+            event.preventDefault();
+            deferredPrompt = event;
+            showInstallUI();
+        });
+
+        window.addEventListener("appinstalled", function () {
+            deferredPrompt = null;
+            hideInstallUI();
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener("click", triggerInstall);
+        }
+        if (installBannerBtn) {
+            installBannerBtn.addEventListener("click", triggerInstall);
+        }
+    </script>
 </body>
 </html>

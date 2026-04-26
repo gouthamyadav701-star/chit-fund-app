@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card" style="max-width: 680px;">
-    <h2>Create Chit Group</h2>
+    <h2>{{ "Edit Chit Group" if is_edit else "Create Chit Group" }}</h2>
     <form method="post">
         {{ form.hidden_tag() }}
         <label>{{ form.name.label }}</label>
@@ -12,6 +12,8 @@
         {{ form.total_members() }}
         <label>{{ form.start_date.label }}</label>
         {{ form.start_date() }}
+        <label>{{ form.auction_day.label }}</label>
+        {{ form.auction_day() }}
         {{ form.submit() }}
     </form>
 </div>

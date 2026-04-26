@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card" style="max-width: 680px;">
-    <h2>Add Member</h2>
+    <h2>{{ "Edit Member" if is_edit else "Add Member" }}</h2>
     <form method="post">
         {{ form.hidden_tag() }}
         <label>{{ form.name.label }}</label>
