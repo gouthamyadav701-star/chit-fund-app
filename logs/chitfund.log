@@ -1203,3 +1203,189 @@ Traceback (most recent call last):
   File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fpdf\fpdf.py", line 150, in wrapper
     return fn(self, *args, **kwargs)
 TypeError: FPDF.cell() got an unexpected keyword argument 'new_x'
+2026-04-23 18:30:15,123 INFO gou_app User goutham logged in
+2026-04-23 18:30:15,217 ERROR gou_app Exception on / [GET]
+Traceback (most recent call last):
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\gou_app\blueprints\core.py", line 26, in dashboard
+    return render_template(
+        "dashboard.html",
+    ...<6 lines>...
+        round_forms=round_forms,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\dashboard.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\base.html", line 157, in top-level template code
+    <a class="button secondary" href="{{ url_for('auctions.index') }}">Auctions</a>
+    ^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auctions.index'. Did you mean 'auth.login' instead?
+2026-04-23 18:30:15,240 ERROR gou_app Unhandled server error: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\gou_app\blueprints\core.py", line 26, in dashboard
+    return render_template(
+        "dashboard.html",
+    ...<6 lines>...
+        round_forms=round_forms,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\dashboard.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\base.html", line 157, in top-level template code
+    <a class="button secondary" href="{{ url_for('auctions.index') }}">Auctions</a>
+    ^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auctions.index'. Did you mean 'auth.login' instead?
+2026-04-23 18:30:59,825 INFO gou_app User goutham logged in
+2026-04-23 18:30:59,901 ERROR gou_app Exception on / [GET]
+Traceback (most recent call last):
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\gou_app\blueprints\core.py", line 26, in dashboard
+    return render_template(
+        "dashboard.html",
+    ...<6 lines>...
+        round_forms=round_forms,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\dashboard.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\base.html", line 157, in top-level template code
+    <a class="button secondary" href="{{ url_for('auctions.index') }}">Auctions</a>
+    ^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auctions.index'. Did you mean 'auth.login' instead?
+2026-04-23 18:30:59,919 ERROR gou_app Unhandled server error: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\gou_app\blueprints\core.py", line 26, in dashboard
+    return render_template(
+        "dashboard.html",
+    ...<6 lines>...
+        round_forms=round_forms,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 151, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\templating.py", line 132, in _render
+    rv = template.render(context)
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\dashboard.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "C:\Users\Gouth\OneDrive\Documents\GitHub\chit-fund-app\templates\base.html", line 157, in top-level template code
+    <a class="button secondary" href="{{ url_for('auctions.index') }}">Auctions</a>
+    ^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Gouth\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\werkzeug\routing\map.py", line 901, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'auctions.index'. Did you mean 'auth.login' instead?
