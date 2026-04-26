@@ -14,25 +14,56 @@ core_bp = Blueprint("core", __name__)
 @login_required
 def dashboard():
     search = (request.args.get("q") or "").strip().lower()
-    members = Member.query.filter_by(deleted=False).order_by(Member.name).all()
-    if search:
-        members = [
-            member
-            for member in members
-            if search in member.name.lower()
-            or search in (member.phone or "").lower()
-            or search in (member.email or "").lower()
-        ]
-
-    groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+    members = []
+    groups = []
     pending_users = []
-    if current_user.role == "Admin":
-        pending_users = User.query.filter_by(is_approved=False, deleted=False).order_by(User.created_at.asc()).all()
-
-    metrics = build_dashboard_metrics()
+    active_cycles = []
     action_form = EmptyForm()
-    round_forms = {group.id: RoundForm(next_round=str(min(group.current_round + 1, group.total_members))) for group in groups}
-    active_cycles = ChitCycle.query.filter_by(deleted=False).order_by(ChitCycle.auction_date.asc()).all()
+    round_forms = {}
+    metrics = {
+        "total_collections": 0.0,
+        "total_penalties": 0.0,
+        "pending_payments": 0,
+        "overdue_memberships": [],
+        "profit": 0.0,
+        "active_groups": 0,
+        "closed_auctions": 0,
+    }
+
+    try:
+        members = Member.query.filter_by(deleted=False).order_by(Member.name).all()
+        if search:
+            members = [
+                member
+                for member in members
+                if search in member.name.lower()
+                or search in (member.phone or "").lower()
+                or search in (member.email or "").lower()
+            ]
+    except Exception:
+        current_app.logger.exception("Dashboard member query failed")
+
+    try:
+        groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+        round_forms = {group.id: RoundForm(next_round=str(min(group.current_round + 1, group.total_members))) for group in groups}
+    except Exception:
+        current_app.logger.exception("Dashboard group query failed")
+
+    try:
+        if current_user.role == "Admin":
+            pending_users = User.query.filter_by(is_approved=False, deleted=False).order_by(User.created_at.asc()).all()
+    except Exception:
+        current_app.logger.exception("Dashboard pending users query failed")
+
+    try:
+        metrics = build_dashboard_metrics()
+    except Exception:
+        current_app.logger.exception("Dashboard metrics build failed")
+
+    try:
+        active_cycles = ChitCycle.query.filter_by(deleted=False).order_by(ChitCycle.auction_date.asc()).all()
+    except Exception:
+        current_app.logger.exception("Dashboard cycles query failed")
 
     return render_template(
         "dashboard.html",
