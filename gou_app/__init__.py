@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import UTC, datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask
@@ -13,6 +14,7 @@ from .config import Config
 from .blueprints.api import api_bp
 from .blueprints.auctions import auctions_bp
 from .extensions import bcrypt, csrf, db, limiter, login_manager, mail, migrate
+from .services import process_group_retention
 
 
 def configure_logging(app: Flask) -> None:
@@ -44,6 +46,14 @@ def ensure_runtime_schema(app: Flask) -> None:
             statements.append(
                 "ALTER TABLE chit_group ADD COLUMN auction_day INTEGER NOT NULL DEFAULT 5"
             )
+        if "completed_on" not in chit_group_columns:
+            statements.append("ALTER TABLE chit_group ADD COLUMN completed_on DATE")
+        if "retention_expires_on" not in chit_group_columns:
+            statements.append("ALTER TABLE chit_group ADD COLUMN retention_expires_on DATE")
+        if "archive_export_sent_on" not in chit_group_columns:
+            statements.append("ALTER TABLE chit_group ADD COLUMN archive_export_sent_on TIMESTAMP")
+        if "archived_on" not in chit_group_columns:
+            statements.append("ALTER TABLE chit_group ADD COLUMN archived_on TIMESTAMP")
 
         membership_columns = columns_for("group_membership")
         if membership_columns:
@@ -101,6 +111,22 @@ def create_app() -> Flask:
     login_manager.init_app(app)
 
     ensure_runtime_schema(app)
+
+    app.extensions["group_retention_last_run_at"] = None
+
+    @app.before_request
+    def run_group_retention_cycle():
+        last_run = app.extensions.get("group_retention_last_run_at")
+        now = datetime.now(UTC)
+        if last_run and now - last_run < timedelta(hours=12):
+            return None
+        try:
+            process_group_retention()
+            app.extensions["group_retention_last_run_at"] = now
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Automatic group retention cleanup failed")
+        return None
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)

@@ -34,3 +34,4 @@ class Config:
 
     APP_LOG_FILE = os.environ.get("APP_LOG_FILE", "logs/chitfund.log")
     PENALTY_RATE_PERCENT = float(os.environ.get("PENALTY_RATE_PERCENT", 2.0))
+    GROUP_ARCHIVE_RETENTION_MONTHS = int(os.environ.get("GROUP_ARCHIVE_RETENTION_MONTHS", 10))

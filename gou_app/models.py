@@ -48,6 +48,10 @@ class ChitGroup(db.Model, AuditMixin):
     start_date = db.Column(db.Date, nullable=False)
     current_round = db.Column(db.Integer, nullable=False, default=1)
     auction_day = db.Column(db.Integer, nullable=False, default=5)
+    completed_on = db.Column(db.Date, nullable=True)
+    retention_expires_on = db.Column(db.Date, nullable=True)
+    archive_export_sent_on = db.Column(db.DateTime, nullable=True)
+    archived_on = db.Column(db.DateTime, nullable=True)
 
     members = db.relationship("Member", back_populates="group", lazy="select")
     schedules = db.relationship(
@@ -91,6 +95,14 @@ class ChitGroup(db.Model, AuditMixin):
     @property
     def active_membership_count(self) -> int:
         return sum(1 for membership in self.memberships if membership.status == "Active" and not membership.deleted)
+
+    @property
+    def is_completed(self) -> bool:
+        return self.completed_on is not None
+
+    @property
+    def is_archived(self) -> bool:
+        return self.archived_on is not None or self.deleted
 
 
 class Member(db.Model, AuditMixin):

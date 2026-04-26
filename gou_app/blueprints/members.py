@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from flask import Blueprint, current_app, flash, redirect, render_template, send_file, url_for
 from flask_login import current_user, login_required
 
@@ -6,7 +8,10 @@ from ..extensions import db
 from ..forms import ChitGroupForm, EmptyForm, MemberForm, MembershipForm, RoundForm
 from ..models import ChitGroup, GroupMembership, Member
 from ..services import (
+    archive_group_data,
     build_member_history_pdf,
+    email_group_archive,
+    ensure_group_completion_dates,
     enroll_member_in_group,
     generate_group_cycles,
     generate_installment_schedule,
@@ -218,6 +223,41 @@ def advance_round(group_id):
         log_audit(current_user.id, "group.round_advanced", "ChitGroup", group.id, {"round": group.current_round})
         db.session.commit()
         flash(f"{group.name} moved to round {group.current_round}.", "success")
+    return redirect(url_for("core.dashboard"))
+
+
+@members_bp.route("/groups/<int:group_id>/archive", methods=["POST"])
+@manager_required
+def archive_group(group_id):
+    form = EmptyForm()
+    if not form.validate_on_submit():
+        flash("Group archive request was invalid.", "danger")
+        return redirect(url_for("core.dashboard"))
+
+    group = ChitGroup.query.filter_by(id=group_id, deleted=False).first_or_404()
+    ensure_group_completion_dates(group, current_user.id)
+
+    if not group.completed_on:
+        flash("This group can be deleted only after all 25 months are completed.", "warning")
+        db.session.rollback()
+        return redirect(url_for("core.dashboard"))
+
+    try:
+        exported = email_group_archive(group)
+        if not exported:
+            db.session.rollback()
+            flash("Archive email could not be sent. Check admin email and mail settings before deleting.", "danger")
+            return redirect(url_for("core.dashboard"))
+
+        group.archive_export_sent_on = datetime.now(UTC).replace(tzinfo=None)
+        archive_group_data(group, current_user.id)
+        db.session.commit()
+        flash(f"{group.name} archive emailed and group data deleted.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Manual group archive failed for %s", group.id)
+        flash("Group could not be archived right now.", "danger")
+
     return redirect(url_for("core.dashboard"))
 
 

@@ -93,6 +93,7 @@
                     <th>Pool Value</th>
                     <th>Round</th>
                     <th>Next Due</th>
+                    <th>Retention</th>
                     <th>Actions</th>
                 </tr>
                 {% for group in groups %}
@@ -103,8 +104,22 @@
                     <td>{{ group.current_round }} / {{ group.total_members }}</td>
                     <td>{{ group.current_due_date.strftime('%d-%m-%Y') if group.current_due_date else '-' }}</td>
                     <td>
+                        {% if group.completed_on %}
+                        Complete: {{ group.completed_on.strftime('%d-%m-%Y') }}<br>
+                        <span class="muted">Delete after: {{ group.retention_expires_on.strftime('%d-%m-%Y') if group.retention_expires_on else '-' }}</span>
+                        {% else %}
+                        <span class="muted">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
                         {% if current_user.role in ['Admin', 'Manager'] %}
                         <a class="button secondary" href="{{ url_for('members.edit_group', group_id=group.id) }}">Edit</a>
+                        {% if group.completed_on %}
+                        <form class="inline" method="post" action="{{ url_for('members.archive_group', group_id=group.id) }}">
+                            {{ action_form.hidden_tag() }}
+                            <button class="danger btn-sm" type="submit">Delete Now</button>
+                        </form>
+                        {% endif %}
                         {% endif %}
                         {% if current_user.role in ['Admin', 'Manager'] and group.current_round < group.total_members %}
                         <form class="inline" method="post" action="{{ url_for('members.advance_round', group_id=group.id) }}">
@@ -118,7 +133,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6">No groups created yet.</td></tr>
+                <tr><td colspan="7">No groups created yet.</td></tr>
                 {% endfor %}
             </table>
             </div>

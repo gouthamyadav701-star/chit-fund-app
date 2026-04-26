@@ -13,7 +13,7 @@ auctions_bp = Blueprint("auctions", __name__)
 @auctions_bp.route("/auctions")
 @login_required
 def index():
-    cycles = ChitCycle.query.filter_by(deleted=False).order_by(ChitCycle.auction_date.desc()).all()
+    cycles = ChitCycle.query.filter_by(deleted=False).order_by(ChitCycle.auction_date.asc()).all()
     bid_form = AuctionBidForm()
     close_form = AuctionCloseForm()
     return render_template("auctions.html", cycles=cycles, bid_form=bid_form, close_form=close_form)

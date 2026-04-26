@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import tempfile
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
 from threading import Thread
@@ -27,6 +27,7 @@ from .models import (
     LedgerEntry,
     Member,
     Payment,
+    User,
     today_ist,
 )
 
@@ -401,6 +402,198 @@ def build_payment_excel(payments: list[Payment]) -> BytesIO:
     workbook.save(output)
     output.seek(0)
     return output
+
+
+def build_group_archive_excel(group: ChitGroup) -> BytesIO:
+    workbook = Workbook()
+
+    summary = workbook.active
+    summary.title = "Group Summary"
+    summary.append(["Field", "Value"])
+    summary.append(["Group Name", group.name])
+    summary.append(["Monthly Amount", float(group.monthly_amount)])
+    summary.append(["Total Members", group.total_members])
+    summary.append(["Pool Value", group.pool_value])
+    summary.append(["Current Round", group.current_round])
+    summary.append(["Completed On", group.completed_on.isoformat() if group.completed_on else "-"])
+    summary.append(["Retention Expires On", group.retention_expires_on.isoformat() if group.retention_expires_on else "-"])
+    for cell in summary[1]:
+        cell.fill = PatternFill("solid", fgColor="1F4E78")
+        cell.font = Font(color="FFFFFF", bold=True)
+
+    members_sheet = workbook.create_sheet("Memberships")
+    members_sheet.append(["Member", "Phone", "Email", "Slot", "Share", "Status", "Joined On"])
+    for membership in sorted((m for m in group.memberships if not m.deleted), key=lambda item: (item.member.name, item.slot_number)):
+        members_sheet.append(
+            [
+                membership.member.name,
+                membership.member.phone or "",
+                membership.member.email or "",
+                membership.slot_number,
+                membership.share_label,
+                membership.status,
+                membership.joined_on.isoformat() if membership.joined_on else "",
+            ]
+        )
+
+    payments_sheet = workbook.create_sheet("Payments")
+    payments_sheet.append(["Payment ID", "Member", "Slot", "Cycle", "Status", "Amount", "Penalty", "Timestamp"])
+    for payment in sorted((p for p in group.payments if not p.deleted), key=lambda item: item.timestamp or item.created_at):
+        payments_sheet.append(
+            [
+                payment.id,
+                payment.member.name,
+                payment.membership.slot_number if payment.membership else "-",
+                payment.cycle.cycle_number if payment.cycle else "-",
+                payment.status,
+                float(payment.amount),
+                float(payment.penalty_amount),
+                payment.formatted_timestamp,
+            ]
+        )
+
+    cycles_sheet = workbook.create_sheet("Cycles")
+    cycles_sheet.append(
+        ["Cycle", "Status", "Due Date", "Auction Date", "Winner", "Slot", "Payout", "Discount", "Dividend/Share"]
+    )
+    for cycle in sorted((c for c in group.cycles if not c.deleted), key=lambda item: item.cycle_number):
+        cycles_sheet.append(
+            [
+                cycle.cycle_number,
+                cycle.status,
+                cycle.due_date.isoformat() if cycle.due_date else "",
+                cycle.auction_date.isoformat() if cycle.auction_date else "",
+                cycle.winner_membership.member.name if cycle.winner_membership else "",
+                cycle.winner_membership.slot_number if cycle.winner_membership else "",
+                float(cycle.winner_payout_amount or 0),
+                float(cycle.discount_amount or 0),
+                float(cycle.dividend_per_member or 0),
+            ]
+        )
+
+    for sheet in workbook.worksheets:
+        for column in sheet.columns:
+            max_length = max(len(str(cell.value or "")) for cell in column) + 2
+            sheet.column_dimensions[column[0].column_letter].width = min(max_length, 40)
+
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return output
+
+
+def _admin_emails() -> list[str]:
+    admins = (
+        User.query.filter_by(role="Admin", is_approved=True, deleted=False)
+        .order_by(User.id.asc())
+        .all()
+    )
+    return [admin.email for admin in admins if admin.email]
+
+
+def _mail_ready() -> bool:
+    return bool(current_app.config.get("MAIL_DEFAULT_SENDER") and current_app.config.get("MAIL_USERNAME") and current_app.config.get("MAIL_PASSWORD"))
+
+
+def email_group_archive(group: ChitGroup) -> bool:
+    recipients = _admin_emails()
+    if not recipients or not _mail_ready():
+        current_app.logger.warning("Skipping group archive email for %s because mail is not configured or no admin email exists.", group.name)
+        return False
+
+    workbook = build_group_archive_excel(group)
+    message = Message(
+        subject=f"Chit Group Archive Export - {group.name}",
+        recipients=recipients,
+        body=(
+            f"The chit group '{group.name}' completed on {group.completed_on or '-'}.\n"
+            f"Its 10-month retention period has ended, so the attached Excel archive was generated before automatic cleanup."
+        ),
+    )
+    message.attach(
+        f"{group.name.replace(' ', '_')}_archive.xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        workbook.getvalue(),
+    )
+    mail.send(message)
+    return True
+
+
+def ensure_group_completion_dates(group: ChitGroup, actor_id: int | None = None) -> bool:
+    active_cycles = [cycle for cycle in group.cycles if not cycle.deleted]
+    all_cycles_closed = bool(active_cycles) and all(cycle.status == "Closed" for cycle in active_cycles)
+    if not all_cycles_closed or group.completed_on is not None:
+        return False
+
+    retention_months = int(current_app.config.get("GROUP_ARCHIVE_RETENTION_MONTHS", 10))
+    today = today_ist()
+    group.completed_on = today
+    group.retention_expires_on = today + relativedelta(months=retention_months)
+    group.updated_by = actor_id
+    log_audit(actor_id, "group.completed", "ChitGroup", group.id, {"name": group.name})
+    return True
+
+
+def archive_group_data(group: ChitGroup, actor_id: int | None = None) -> None:
+    archive_time = datetime.now(UTC).replace(tzinfo=None)
+    group.deleted = True
+    group.archived_on = archive_time
+    group.updated_by = actor_id
+
+    for schedule in group.schedules:
+        schedule.deleted = True
+        schedule.updated_by = actor_id
+
+    for cycle in group.cycles:
+        cycle.deleted = True
+        cycle.updated_by = actor_id
+        for bid in cycle.bids:
+            bid.deleted = True
+            bid.updated_by = actor_id
+
+    for payment in group.payments:
+        payment.deleted = True
+        payment.updated_by = actor_id
+
+    for entry in group.ledger_entries:
+        entry.deleted = True
+        entry.updated_by = actor_id
+
+    for membership in group.memberships:
+        membership.deleted = True
+        membership.status = "Archived"
+        membership.updated_by = actor_id
+        member = membership.member
+        if member.group_id == group.id:
+            member.group_id = None
+        active_remaining = [
+            item for item in member.memberships if item.group_id != group.id and not item.deleted and item.status == "Active"
+        ]
+        if not active_remaining:
+            member.deleted = True
+            member.updated_by = actor_id
+
+    log_audit(actor_id, "group.archived", "ChitGroup", group.id, {"name": group.name})
+
+
+def process_group_retention(actor_id: int | None = None) -> None:
+    today = today_ist()
+    groups = ChitGroup.query.filter_by(deleted=False).all()
+    changed = False
+
+    for group in groups:
+        if ensure_group_completion_dates(group, actor_id):
+            changed = True
+
+        if group.retention_expires_on and group.retention_expires_on <= today and not group.archived_on:
+            exported = email_group_archive(group)
+            if exported:
+                group.archive_export_sent_on = datetime.now(UTC).replace(tzinfo=None)
+                archive_group_data(group, actor_id)
+                changed = True
+
+    if changed:
+        db.session.commit()
 
 
 def build_receipt_pdf(payment: Payment) -> BytesIO:
