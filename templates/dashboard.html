@@ -2,7 +2,58 @@
 {% block title %}Dashboard{% endblock %}
 {% block topbar_title %}Dashboard{% endblock %}
 {% block content %}
-<div class="grid">
+<style>
+    .mobile-dashboard-nav {
+        display: none;
+    }
+    @media (max-width: 980px) {
+        .mobile-dashboard-nav {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 16px;
+            position: sticky;
+            top: 74px;
+            z-index: 12;
+            background: rgba(11, 15, 22, 0.94);
+            padding: 10px 0 8px;
+        }
+        .mobile-dashboard-tab {
+            width: 100%;
+            min-height: 38px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: rgba(96, 165, 250, 0.08);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .mobile-dashboard-tab.active {
+            background: linear-gradient(135deg, var(--brand) 0%, #0f766e 100%);
+            color: #041312;
+            border-color: transparent;
+        }
+        .dashboard-panel {
+            display: none !important;
+        }
+        .dashboard-panel.is-active {
+            display: block !important;
+        }
+        .dashboard-panel.grid.is-active,
+        .dashboard-panel.stack.is-active {
+            display: grid !important;
+        }
+    }
+</style>
+
+<div class="mobile-dashboard-nav">
+    <button type="button" class="mobile-dashboard-tab active" data-dashboard-tab="overview">Overview</button>
+    <button type="button" class="mobile-dashboard-tab" data-dashboard-tab="members">Members</button>
+    <button type="button" class="mobile-dashboard-tab" data-dashboard-tab="groups">Groups</button>
+    <button type="button" class="mobile-dashboard-tab" data-dashboard-tab="more">More</button>
+</div>
+
+<div class="grid dashboard-panel is-active" data-dashboard-panel="overview">
     <div class="card stat">
         <h3>Total Collected</h3>
         <strong class="mono">Rs {{ "%.2f"|format(metrics.total_collections) }}</strong>
@@ -27,7 +78,7 @@
 
 <div class="split">
     <div class="stack">
-        <div class="card">
+        <div class="card dashboard-panel" data-dashboard-panel="members">
             <form method="get" style="display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap;">
                 <input type="search" name="q" value="{{ search }}" placeholder="Search members by name, phone, or email">
                 <button type="submit">Search</button>
@@ -83,7 +134,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card dashboard-panel" data-dashboard-panel="groups">
             <h2 style="margin-top: 0;">Chit Groups</h2>
             <div class="table-wrap">
             <table>
@@ -140,7 +191,7 @@
         </div>
     </div>
 
-    <div class="stack">
+    <div class="stack dashboard-panel" data-dashboard-panel="more">
         <div class="card">
             <h2 style="margin-top: 0;">Overdue Alerts</h2>
             {% for membership in metrics.overdue_memberships %}
@@ -198,4 +249,29 @@
         </div>
     </div>
 </div>
+<script>
+    (function () {
+        const tabs = Array.from(document.querySelectorAll("[data-dashboard-tab]"));
+        const panels = Array.from(document.querySelectorAll("[data-dashboard-panel]"));
+
+        function activatePanel(panelName) {
+            tabs.forEach((tab) => {
+                tab.classList.toggle("active", tab.dataset.dashboardTab === panelName);
+            });
+            panels.forEach((panel) => {
+                panel.classList.toggle("is-active", panel.dataset.dashboardPanel === panelName);
+            });
+        }
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", function () {
+                activatePanel(tab.dataset.dashboardTab);
+            });
+        });
+
+        if (window.innerWidth <= 980) {
+            activatePanel("overview");
+        }
+    })();
+</script>
 {% endblock %}
