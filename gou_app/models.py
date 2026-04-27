@@ -35,9 +35,15 @@ class User(UserMixin, db.Model, AuditMixin):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="Viewer")
     is_approved = db.Column(db.Boolean, nullable=False, default=False)
+    member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=True)
     audit_logs = db.relationship("AuditLog", back_populates="actor", lazy="select")
+    member = db.relationship("Member", lazy="select")
 
     __table_args__ = (Index("ix_user_username", "username"),)
+
+    @property
+    def is_customer(self) -> bool:
+        return self.role == "Customer"
 
 
 class ChitGroup(db.Model, AuditMixin):

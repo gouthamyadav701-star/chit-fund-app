@@ -4,15 +4,15 @@
 <div class="auth-card">
     <p class="eyebrow">Balaji Chit Funds</p>
     <h2 class="auth-title">Login</h2>
-    <p class="auth-subtitle">Sign in to manage members, payments, auctions, and reports.</p>
+    <p class="auth-subtitle">Staff can sign in with username. Customers can sign in with their phone number.</p>
     <form method="post">
         {{ form.hidden_tag() }}
         <label>{{ form.username.label }}</label>
-        {{ form.username(placeholder="Enter username") }}
+        {{ form.username(placeholder="Enter username or phone number") }}
         <label>{{ form.password.label }}</label>
         {{ form.password(placeholder="Enter password") }}
         {{ form.submit() }}
     </form>
-    <p class="auth-link"><a href="{{ url_for('auth.register') }}">Create an account</a></p>
+    <p class="auth-link"><a href="{{ url_for('auth.register') }}">Create a staff or customer account</a></p>
 </div>
 {% endblock %}

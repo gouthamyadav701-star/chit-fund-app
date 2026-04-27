@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
 from ..decorators import manager_required
@@ -13,6 +13,8 @@ auctions_bp = Blueprint("auctions", __name__)
 @auctions_bp.route("/auctions")
 @login_required
 def index():
+    if current_user.role == "Customer":
+        abort(403)
     cycles = ChitCycle.query.filter_by(deleted=False).order_by(ChitCycle.auction_date.asc()).all()
     bid_form = AuctionBidForm()
     close_form = AuctionCloseForm()

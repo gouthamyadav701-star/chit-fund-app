@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}My Account{% endblock %}
+{% block topbar_title %}My Account{% endblock %}
+{% block content %}
+{% if member %}
+<div class="grid" style="margin-bottom: 18px;">
+    <div class="card stat">
+        <h3>My Name</h3>
+        <strong style="font-size:24px;">{{ member.name }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Total Paid</h3>
+        <strong class="mono">Rs {{ "%.2f"|format(member.paid_amount) }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Total Due</h3>
+        <strong class="mono">Rs {{ "%.2f"|format(member.due_amount) }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Active Chits</h3>
+        <strong>{{ member.active_memberships|length }}</strong>
+    </div>
+</div>
+
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h2 style="margin:0;">My Chit Summary</h2>
+            <p class="muted" style="margin:8px 0 0;">Only your own memberships, payments, and winning history are shown here.</p>
+        </div>
+        <div class="actions">
+            <a class="button secondary" href="{{ url_for('payments.history') }}">My Payments</a>
+            <a class="button secondary" href="{{ url_for('members.member_history_pdf', member_id=member.id) }}">Download PDF</a>
+        </div>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+        <div>
+            <p class="eyebrow">Phone</p>
+            <div>{{ member.phone or "-" }}</div>
+        </div>
+        <div>
+            <p class="eyebrow">Email</p>
+            <div>{{ member.email or "-" }}</div>
+        </div>
+        <div>
+            <p class="eyebrow">Groups</p>
+            <div>{{ member.active_group_names }}</div>
+        </div>
+        <div>
+            <p class="eyebrow">Status</p>
+            <div>{{ "Overdue" if member.is_overdue else "On Track" }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin-top: 0;">My Chit Slots</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Group</th>
+                <th>Slot</th>
+                <th>Share</th>
+                <th>Monthly Due</th>
+                <th>Outstanding</th>
+                <th>Status</th>
+            </tr>
+            {% for membership in member.active_memberships %}
+            <tr>
+                <td>{{ membership.group.name }}</td>
+                <td>{{ membership.slot_number }}</td>
+                <td>{{ membership.share_label }}</td>
+                <td>Rs {{ "%.2f"|format(membership.expected_amount) }}</td>
+                <td>Rs {{ "%.2f"|format(membership.outstanding_amount) }}</td>
+                <td><span class="pill {{ 'overdue' if membership.is_overdue else '' }}">{{ membership.payment_status }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">No active chit slots linked yet.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin-top: 0;">Recent Payments</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Group</th>
+                <th>Cycle</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Receipt</th>
+            </tr>
+            {% for payment in recent_payments %}
+            <tr>
+                <td>{{ payment.group.name if payment.group else "-" }}</td>
+                <td>{{ payment.cycle.cycle_number if payment.cycle else "-" }}</td>
+                <td>Rs {{ "%.2f"|format(payment.amount) }}</td>
+                <td>{{ payment.status }}</td>
+                <td>{{ payment.formatted_timestamp }}</td>
+                <td><a class="button secondary small" href="{{ url_for('payments.receipt', payment_id=payment.id) }}">Receipt</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">No payments recorded yet.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin-top: 0;">Winning History</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Group</th>
+                <th>Cycle</th>
+                <th>Slot</th>
+                <th>Share</th>
+                <th>Final Payout</th>
+            </tr>
+            {% set ns = namespace(has_win=false) %}
+            {% for membership in member.memberships %}
+                {% for cycle in membership.cycles_won if cycle.status == 'Closed' and not cycle.deleted %}
+                {% set ns.has_win = true %}
+                <tr>
+                    <td>{{ cycle.group.name }}</td>
+                    <td>{{ cycle.cycle_number }}</td>
+                    <td>{{ membership.slot_number }}</td>
+                    <td>{{ membership.share_label }}</td>
+                    <td>Rs {{ "%.2f"|format(cycle.winner_payout_amount or 0) }}</td>
+                </tr>
+                {% endfor %}
+            {% endfor %}
+            {% if not ns.has_win %}
+            <tr><td colspan="5">No winning history yet.</td></tr>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <h2 style="margin-top: 0;">Account Pending Link</h2>
+    <p>Your customer account is not linked to a member record yet. Please contact the office/admin.</p>
+</div>
+{% endif %}
+{% endblock %}

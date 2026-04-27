@@ -37,8 +37,18 @@ class EmptyForm(FlaskForm):
 
 
 class RegisterForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired()])
-    email = StringField("Email", validators=[DataRequired(), Email()])
+    account_type = SelectField(
+        "Account Type",
+        choices=[("Customer", "Customer"), ("Staff", "Staff / Office User")],
+        validators=[DataRequired()],
+        default="Customer",
+    )
+    username = StringField("Username", validators=[Optional()])
+    email = StringField("Email", validators=[Optional(), Email()])
+    phone = StringField(
+        "Phone",
+        validators=[Optional(), Regexp(r"^\+?\d{10,15}$", message="Use a valid phone number.")],
+    )
     password = PasswordField("Password", validators=[DataRequired(), strong_password])
     confirm_password = PasswordField(
         "Confirm Password",
@@ -47,13 +57,34 @@ class RegisterForm(FlaskForm):
     role = SelectField(
         "Role",
         choices=[("Viewer", "Viewer"), ("Manager", "Manager"), ("Admin", "Admin")],
-        validators=[DataRequired()],
+        validators=[Optional()],
     )
     submit = SubmitField("Register")
 
+    def validate(self, extra_validators=None):
+        is_valid = super().validate(extra_validators=extra_validators)
+        if not is_valid:
+            return False
+
+        if self.account_type.data == "Customer":
+            if not (self.phone.data or "").strip():
+                self.phone.errors.append("Phone number is required for customer accounts.")
+                return False
+        else:
+            if not (self.username.data or "").strip():
+                self.username.errors.append("Username is required for staff accounts.")
+                return False
+            if not (self.email.data or "").strip():
+                self.email.errors.append("Email is required for staff accounts.")
+                return False
+            if not self.role.data:
+                self.role.errors.append("Role is required for staff accounts.")
+                return False
+        return True
+
 
 class LoginForm(FlaskForm):
-    username = StringField("Username", validators=[DataRequired()])
+    username = StringField("Username or Phone", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Login")
 

@@ -515,6 +515,11 @@
             <div class="nav-section">Overview</div>
             <a class="nav-link {% if request.endpoint == 'core.dashboard' %}active{% endif %}" href="{{ url_for('core.dashboard') }}">Dashboard</a>
 
+            {% if current_user.role == 'Customer' %}
+            <div class="nav-section">My Account</div>
+            <a class="nav-link {% if request.endpoint == 'payments.history' %}active{% endif %}" href="{{ url_for('payments.history') }}">My Payments</a>
+            <a class="nav-link {% if request.endpoint == 'members.member_history_pdf' %}active{% endif %}" href="{{ url_for('members.member_history_pdf', member_id=current_user.member_id) if current_user.member_id else '#' }}">My PDF</a>
+            {% else %}
             <div class="nav-section">Operations</div>
             <a class="nav-link {% if 'members' in request.endpoint %}active{% endif %}" href="{{ url_for('members.add_member') }}">Members</a>
             <a class="nav-link {% if request.endpoint == 'payments.history' %}active{% endif %}" href="{{ url_for('payments.history') }}">Payments</a>
@@ -524,6 +529,7 @@
             <div class="nav-section">Quick Actions</div>
             <a class="nav-link" href="{{ url_for('members.add_member') }}">Add Member</a>
             <a class="nav-link" href="{{ url_for('members.create_group') }}">Create Group</a>
+            {% endif %}
             {% endif %}
 
             <div class="nav-footer">

@@ -89,6 +89,10 @@ def ensure_runtime_schema(app: Flask) -> None:
             if "due_date" not in payment_columns:
                 statements.append("ALTER TABLE payment ADD COLUMN due_date DATE")
 
+        user_columns = columns_for("user")
+        if user_columns and "member_id" not in user_columns:
+            statements.append("ALTER TABLE \"user\" ADD COLUMN member_id INTEGER")
+
         if statements:
             with db.engine.begin() as connection:
                 for statement in statements:

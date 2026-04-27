@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from flask import Blueprint, current_app, flash, redirect, render_template, send_file, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, send_file, url_for
 from flask_login import current_user, login_required
 
 from ..decorators import manager_required
@@ -264,6 +264,8 @@ def archive_group(group_id):
 @members_bp.route("/members/<int:member_id>")
 @login_required
 def member_detail(member_id):
+    if current_user.role == "Customer" and current_user.member_id != member_id:
+        abort(403)
     member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
     membership_form = MembershipForm()
     groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
@@ -274,6 +276,8 @@ def member_detail(member_id):
 @members_bp.route("/members/<int:member_id>/memberships", methods=["POST"])
 @manager_required
 def add_membership(member_id):
+    if current_user.role == "Customer" and current_user.member_id != member_id:
+        abort(403)
     member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
     form = MembershipForm()
     groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
@@ -299,6 +303,8 @@ def add_membership(member_id):
 @members_bp.route("/members/<int:member_id>/history-pdf")
 @login_required
 def member_history_pdf(member_id):
+    if current_user.role == "Customer" and current_user.member_id != member_id:
+        abort(403)
     member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
     pdf_file = build_member_history_pdf(member)
     safe_name = member.name.replace(" ", "_")

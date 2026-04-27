@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from ..decorators import manager_required
@@ -33,14 +33,23 @@ def make_payment(member_id):
 @login_required
 def history():
     form = PaymentFilterForm(request.args)
-    members = Member.query.filter_by(deleted=False).order_by(Member.name).all()
-    groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
-    form.member_id.choices = [(0, "All Members")] + [(member.id, member.name) for member in members]
-    form.group_id.choices = [(0, "All Groups")] + [(group.id, group.name) for group in groups]
-
     query = Payment.query.filter_by(deleted=False)
-    if form.member_id.data:
-        query = query.filter_by(member_id=form.member_id.data)
+
+    if current_user.role == "Customer":
+        member = Member.query.filter_by(id=current_user.member_id, deleted=False).first_or_404()
+        groups = sorted({payment.group for payment in member.payments if payment.group and not payment.deleted}, key=lambda item: item.name)
+        form.member_id.choices = [(member.id, member.name)]
+        form.group_id.choices = [(0, "My Groups")] + [(group.id, group.name) for group in groups]
+        form.member_id.data = member.id
+        query = query.filter_by(member_id=member.id)
+    else:
+        members = Member.query.filter_by(deleted=False).order_by(Member.name).all()
+        groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+        form.member_id.choices = [(0, "All Members")] + [(member.id, member.name) for member in members]
+        form.group_id.choices = [(0, "All Groups")] + [(group.id, group.name) for group in groups]
+        if form.member_id.data:
+            query = query.filter_by(member_id=form.member_id.data)
+
     if form.group_id.data:
         query = query.filter_by(group_id=form.group_id.data)
     if form.status.data:
@@ -51,14 +60,19 @@ def history():
         query = query.filter(Payment.timestamp <= form.date_to.data)
 
     payments = query.order_by(Payment.timestamp.desc()).all()
-    defaulters = pending_memberships(form.group_id.data or None)
+    defaulters = [] if current_user.role == "Customer" else pending_memberships(form.group_id.data or None)
     return render_template("history.html", payments=payments, defaulters=defaulters, filter_form=form)
 
 
 @payments_bp.route("/payments/export")
 @login_required
 def export_excel():
-    payments = Payment.query.filter_by(deleted=False).order_by(Payment.timestamp.desc()).all()
+    query = Payment.query.filter_by(deleted=False)
+    if current_user.role == "Customer":
+        if not current_user.member_id:
+            abort(403)
+        query = query.filter_by(member_id=current_user.member_id)
+    payments = query.order_by(Payment.timestamp.desc()).all()
     workbook = build_payment_excel(payments)
     return send_file(
         workbook,
@@ -72,5 +86,7 @@ def export_excel():
 @login_required
 def receipt(payment_id):
     payment = Payment.query.filter_by(id=payment_id, deleted=False).first_or_404()
+    if current_user.role == "Customer" and payment.member_id != current_user.member_id:
+        abort(403)
     pdf_file = build_receipt_pdf(payment)
     return send_file(pdf_file, as_attachment=True, download_name=f"receipt_{payment.id}.pdf", mimetype="application/pdf")

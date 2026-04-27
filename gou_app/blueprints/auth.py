@@ -5,7 +5,7 @@ from werkzeug.security import check_password_hash
 from ..decorators import admin_required
 from ..extensions import bcrypt, db, limiter
 from ..forms import EmptyForm, LoginForm, RegisterForm
-from ..models import User
+from ..models import Member, User
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -18,28 +18,68 @@ def register():
     form = RegisterForm()
     if form.validate_on_submit():
         try:
-            if User.query.filter_by(username=form.username.data).first():
-                flash("Username already exists.", "danger")
-                return render_template("register.html", form=form)
-            if User.query.filter_by(email=form.email.data).first():
-                flash("Email already exists.", "danger")
+            first_user = User.query.count() == 0
+            if first_user and form.account_type.data == "Customer":
+                flash("Create the first admin/staff account before customer accounts.", "warning")
                 return render_template("register.html", form=form)
 
-            first_user = User.query.count() == 0
-            new_user = User(
-                username=form.username.data.strip(),
-                email=form.email.data.strip().lower(),
-                password_hash=bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
-                role="Admin" if first_user else form.role.data,
-                is_approved=first_user,
-            )
+            if form.account_type.data == "Customer":
+                phone = (form.phone.data or "").strip()
+                member = Member.query.filter_by(phone=phone, deleted=False).first()
+                if not member:
+                    flash("Phone number not found in member records. Contact office/admin first.", "danger")
+                    return render_template("register.html", form=form)
+                if User.query.filter_by(member_id=member.id, deleted=False).first():
+                    flash("An account already exists for this member.", "warning")
+                    return render_template("register.html", form=form)
+
+                username = phone
+                email = ((form.email.data or "").strip().lower() or f"{phone.replace('+', '')}@member.local")
+
+                if User.query.filter_by(username=username).first():
+                    flash("An account already exists with this phone number.", "danger")
+                    return render_template("register.html", form=form)
+                if User.query.filter_by(email=email).first():
+                    email = f"{phone.replace('+', '')}.{member.id}@member.local"
+                    if User.query.filter_by(email=email).first():
+                        flash("An account already exists for this member contact.", "danger")
+                        return render_template("register.html", form=form)
+
+                new_user = User(
+                    username=username,
+                    email=email,
+                    password_hash=bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
+                    role="Customer",
+                    is_approved=True,
+                    member_id=member.id,
+                )
+                success_message = "Customer account created. Please log in."
+            else:
+                username = (form.username.data or "").strip()
+                email = (form.email.data or "").strip().lower()
+                if User.query.filter_by(username=username).first():
+                    flash("Username already exists.", "danger")
+                    return render_template("register.html", form=form)
+                if User.query.filter_by(email=email).first():
+                    flash("Email already exists.", "danger")
+                    return render_template("register.html", form=form)
+
+                new_user = User(
+                    username=username,
+                    email=email,
+                    password_hash=bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
+                    role="Admin" if first_user else form.role.data,
+                    is_approved=first_user,
+                )
+                success_message = "Admin account created. Please log in." if first_user else "Registered. Wait for admin approval."
+
             db.session.add(new_user)
             db.session.commit()
-            flash("Admin account created. Please log in." if first_user else "Registered. Wait for admin approval.", "success")
+            flash(success_message, "success")
             return redirect(url_for("auth.login"))
         except Exception:
             db.session.rollback()
-            current_app.logger.exception("Registration failed for %s", form.username.data)
+            current_app.logger.exception("Registration failed for %s", form.username.data or form.phone.data)
             flash("Registration failed. Please try again.", "danger")
 
     return render_template("register.html", form=form)
@@ -53,7 +93,12 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data.strip(), deleted=False).first()
+        identifier = form.username.data.strip()
+        user = User.query.filter_by(username=identifier, deleted=False).first()
+        if not user:
+            member = Member.query.filter_by(phone=identifier, deleted=False).first()
+            if member:
+                user = User.query.filter_by(member_id=member.id, deleted=False).first()
         password_ok = False
         if user:
             try:

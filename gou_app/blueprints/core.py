@@ -1,5 +1,5 @@
 from sqlalchemy import text
-from flask import Blueprint, Response, jsonify, render_template, request, url_for
+from flask import Blueprint, Response, current_app, jsonify, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ..extensions import db
@@ -13,6 +13,17 @@ core_bp = Blueprint("core", __name__)
 @core_bp.route("/")
 @login_required
 def dashboard():
+    if current_user.role == "Customer":
+        member = Member.query.filter_by(id=current_user.member_id, deleted=False).first() if current_user.member_id else None
+        recent_payments = []
+        if member:
+            recent_payments = sorted(
+                [payment for payment in member.payments if not payment.deleted],
+                key=lambda item: item.timestamp or item.created_at,
+                reverse=True,
+            )[:8]
+        return render_template("customer_dashboard.html", member=member, recent_payments=recent_payments)
+
     search = (request.args.get("q") or "").strip().lower()
     members = []
     groups = []

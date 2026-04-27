@@ -137,6 +137,7 @@
         </div>
     </div>
 
+    {% if current_user.role in ['Admin', 'Manager'] %}
     <div>
         <div class="card">
             <h2 style="margin-top: 0;">Add New Membership</h2>
@@ -152,5 +153,6 @@
             </form>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
