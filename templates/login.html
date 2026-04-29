@@ -4,9 +4,11 @@
 <div class="auth-card">
     <p class="eyebrow">Balaji Chit Funds</p>
     <h2 class="auth-title">Login</h2>
-    <p class="auth-subtitle">Staff can sign in with username. Customers can sign in with their phone number.</p>
+    <p class="auth-subtitle">Enter your business code first. Staff can sign in with username, customers with phone number.</p>
     <form method="post">
         {{ form.hidden_tag() }}
+        <label>{{ form.business_code.label }}</label>
+        {{ form.business_code(placeholder="Enter business code") }}
         <label>{{ form.username.label }}</label>
         {{ form.username(placeholder="Enter username or phone number") }}
         <label>{{ form.password.label }}</label>

@@ -25,16 +25,17 @@ members_bp = Blueprint("members", __name__)
 @manager_required
 def add_member():
     form = MemberForm()
-    groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+    groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
     form.group_id.choices = [(0, "No group")] + [(group.id, group.name) for group in groups]
 
     if form.validate_on_submit():
         try:
-            if form.phone.data and Member.query.filter_by(phone=form.phone.data, deleted=False).first():
+            if form.phone.data and Member.query.filter_by(phone=form.phone.data, business_id=current_user.business_id, deleted=False).first():
                 flash("Phone number already exists.", "danger")
                 return render_template("add_member.html", form=form)
 
             member = Member(
+                business_id=current_user.business_id,
                 name=form.name.data.strip(),
                 email=(form.email.data or "").strip() or None,
                 phone=(form.phone.data or "").strip() or None,
@@ -46,7 +47,7 @@ def add_member():
             db.session.add(member)
             db.session.flush()
             if form.group_id.data:
-                selected_group = ChitGroup.query.get(form.group_id.data)
+                selected_group = ChitGroup.query.filter_by(id=form.group_id.data, business_id=current_user.business_id, deleted=False).first()
                 if selected_group:
                     enroll_member_in_group(member, selected_group, current_user.id, is_primary=True, share_units=1.0)
             db.session.commit()
@@ -63,20 +64,23 @@ def add_member():
 @members_bp.route("/members/<int:member_id>/edit", methods=["GET", "POST"])
 @manager_required
 def edit_member(member_id):
-    member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
+    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
     form = MemberForm(obj=member)
-    groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+    groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
     form.group_id.choices = [(0, "No group")] + [(group.id, group.name) for group in groups]
     if not form.is_submitted():
         form.group_id.data = member.group_id or 0
 
     if form.validate_on_submit():
         try:
-            existing_phone = (
-                Member.query.filter(Member.id != member.id, Member.phone == form.phone.data, Member.deleted.is_(False)).first()
-                if form.phone.data
-                else None
-            )
+            existing_phone = None
+            if form.phone.data:
+                existing_phone = Member.query.filter(
+                    Member.id != member.id,
+                    Member.business_id == current_user.business_id,
+                    Member.phone == form.phone.data,
+                    Member.deleted.is_(False),
+                ).first()
             if existing_phone:
                 flash("Phone number already exists.", "danger")
                 return render_template("add_member.html", form=form, is_edit=True, member=member)
@@ -94,7 +98,7 @@ def edit_member(member_id):
                     membership.is_primary = False
 
             if selected_group_id:
-                selected_group = ChitGroup.query.get(selected_group_id)
+                selected_group = ChitGroup.query.filter_by(id=selected_group_id, business_id=current_user.business_id, deleted=False).first()
                 existing_membership = next(
                     (membership for membership in member.memberships if membership.group_id == selected_group_id and not membership.deleted),
                     None,
@@ -123,7 +127,7 @@ def edit_member(member_id):
 def delete_member(member_id):
     form = EmptyForm()
     if form.validate_on_submit():
-        member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
+        member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
         member.deleted = True
         member.updated_by = current_user.id
         log_audit(current_user.id, "member.archived", "Member", member.id, {"name": member.name})
@@ -139,6 +143,7 @@ def create_group():
     if form.validate_on_submit():
         try:
             group = ChitGroup(
+                business_id=current_user.business_id,
                 name=form.name.data.strip(),
                 monthly_amount=form.monthly_amount.data,
                 total_members=int(form.total_members.data),
@@ -164,7 +169,7 @@ def create_group():
 @members_bp.route("/groups/<int:group_id>/edit", methods=["GET", "POST"])
 @manager_required
 def edit_group(group_id):
-    group = ChitGroup.query.filter_by(id=group_id, deleted=False).first_or_404()
+    group = ChitGroup.query.filter_by(id=group_id, business_id=current_user.business_id, deleted=False).first_or_404()
     form = ChitGroupForm(obj=group)
 
     if form.validate_on_submit():
@@ -211,7 +216,7 @@ def edit_group(group_id):
 def advance_round(group_id):
     form = RoundForm()
     if form.validate_on_submit():
-        group = ChitGroup.query.filter_by(id=group_id, deleted=False).first_or_404()
+        group = ChitGroup.query.filter_by(id=group_id, business_id=current_user.business_id, deleted=False).first_or_404()
         next_round = int(form.next_round.data)
         group.current_round = min(max(next_round, 1), group.total_members)
         for cycle in group.cycles:
@@ -234,7 +239,7 @@ def archive_group(group_id):
         flash("Group archive request was invalid.", "danger")
         return redirect(url_for("core.dashboard"))
 
-    group = ChitGroup.query.filter_by(id=group_id, deleted=False).first_or_404()
+    group = ChitGroup.query.filter_by(id=group_id, business_id=current_user.business_id, deleted=False).first_or_404()
     ensure_group_completion_dates(group, current_user.id)
 
     if not group.completed_on:
@@ -266,9 +271,9 @@ def archive_group(group_id):
 def member_detail(member_id):
     if current_user.role == "Customer" and current_user.member_id != member_id:
         abort(403)
-    member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
+    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
     membership_form = MembershipForm()
-    groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+    groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
     membership_form.group_id.choices = [(group.id, group.name) for group in groups]
     return render_template("member_detail.html", member=member, membership_form=membership_form)
 
@@ -278,13 +283,13 @@ def member_detail(member_id):
 def add_membership(member_id):
     if current_user.role == "Customer" and current_user.member_id != member_id:
         abort(403)
-    member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
+    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
     form = MembershipForm()
-    groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+    groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
     form.group_id.choices = [(group.id, group.name) for group in groups]
 
     if form.validate_on_submit():
-        group = ChitGroup.query.filter_by(id=form.group_id.data, deleted=False).first_or_404()
+        group = ChitGroup.query.filter_by(id=form.group_id.data, business_id=current_user.business_id, deleted=False).first_or_404()
         membership = enroll_member_in_group(
             member,
             group,
@@ -305,7 +310,7 @@ def add_membership(member_id):
 def member_history_pdf(member_id):
     if current_user.role == "Customer" and current_user.member_id != member_id:
         abort(403)
-    member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
+    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
     pdf_file = build_member_history_pdf(member)
     safe_name = member.name.replace(" ", "_")
     return send_file(

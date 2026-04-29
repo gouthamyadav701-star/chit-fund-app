@@ -2,6 +2,12 @@
 {% block title %}My Account{% endblock %}
 {% block topbar_title %}My Account{% endblock %}
 {% block content %}
+{% if business %}
+<div class="card" style="margin-bottom: 18px;">
+    <strong>{{ business.name }}</strong><br>
+    <span class="muted">Business Code: <span class="mono">{{ business.code }}</span></span>
+</div>
+{% endif %}
 {% if member %}
 <div class="grid" style="margin-bottom: 18px;">
     <div class="card stat">

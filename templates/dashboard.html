@@ -2,6 +2,12 @@
 {% block title %}Dashboard{% endblock %}
 {% block topbar_title %}Dashboard{% endblock %}
 {% block content %}
+{% if business %}
+<div class="card" style="margin-bottom:16px;">
+    <strong>{{ business.name }}</strong><br>
+    <span class="muted">Business Code: <span class="mono">{{ business.code }}</span></span>
+</div>
+{% endif %}
 <style>
     .mobile-dashboard-nav {
         display: none;

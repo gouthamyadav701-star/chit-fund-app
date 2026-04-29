@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify
-from flask_login import login_required
+from flask import Blueprint, abort, jsonify
+from flask_login import current_user, login_required
 
-from ..models import ChitCycle, ChitGroup, GroupMembership
+from ..models import ChitCycle, GroupMembership
 from ..services import build_dashboard_metrics
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -16,7 +16,9 @@ def dashboard_summary():
 @api_bp.route("/defaulters")
 @login_required
 def defaulters():
-    memberships = GroupMembership.query.filter_by(deleted=False, status="Active").all()
+    if current_user.role == "Customer":
+        abort(403)
+    memberships = GroupMembership.query.filter_by(deleted=False, status="Active", business_id=current_user.business_id).all()
     payload = [
         {
             "membership_id": membership.id,
@@ -35,7 +37,11 @@ def defaulters():
 @api_bp.route("/groups/<int:group_id>/auctions")
 @login_required
 def group_auctions(group_id):
-    cycles = ChitCycle.query.filter_by(group_id=group_id, deleted=False).order_by(ChitCycle.cycle_number.asc()).all()
+    cycles = (
+        ChitCycle.query.filter_by(group_id=group_id, business_id=current_user.business_id, deleted=False)
+        .order_by(ChitCycle.cycle_number.asc())
+        .all()
+    )
     payload = [
         {
             "cycle_number": cycle.cycle_number,

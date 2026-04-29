@@ -15,7 +15,11 @@ auctions_bp = Blueprint("auctions", __name__)
 def index():
     if current_user.role == "Customer":
         abort(403)
-    cycles = ChitCycle.query.filter_by(deleted=False).order_by(ChitCycle.auction_date.asc()).all()
+    cycles = (
+        ChitCycle.query.filter_by(deleted=False, business_id=current_user.business_id)
+        .order_by(ChitCycle.auction_date.asc())
+        .all()
+    )
     bid_form = AuctionBidForm()
     close_form = AuctionCloseForm()
     return render_template("auctions.html", cycles=cycles, bid_form=bid_form, close_form=close_form)
@@ -24,7 +28,7 @@ def index():
 @auctions_bp.route("/auctions/<int:cycle_id>/bid", methods=["POST"])
 @manager_required
 def place_bid(cycle_id):
-    cycle = ChitCycle.query.filter_by(id=cycle_id, deleted=False).first_or_404()
+    cycle = ChitCycle.query.filter_by(id=cycle_id, business_id=current_user.business_id, deleted=False).first_or_404()
     form = AuctionBidForm()
     memberships = [
         membership
@@ -34,7 +38,7 @@ def place_bid(cycle_id):
     form.membership_id.choices = [(membership.id, f"{membership.member.name} - Slot {membership.slot_number} ({membership.share_label})") for membership in memberships]
 
     if form.validate_on_submit():
-        membership = GroupMembership.query.filter_by(id=form.membership_id.data, deleted=False).first_or_404()
+        membership = GroupMembership.query.filter_by(id=form.membership_id.data, business_id=current_user.business_id, deleted=False).first_or_404()
         if cycle.status == "Closed":
             flash("Winner already selected for this cycle.", "warning")
             return redirect(url_for("auctions.index"))
@@ -61,7 +65,7 @@ def place_bid(cycle_id):
 @auctions_bp.route("/auctions/<int:cycle_id>/close", methods=["POST"])
 @manager_required
 def finalize(cycle_id):
-    cycle = ChitCycle.query.filter_by(id=cycle_id, deleted=False).first_or_404()
+    cycle = ChitCycle.query.filter_by(id=cycle_id, business_id=current_user.business_id, deleted=False).first_or_404()
     form = AuctionCloseForm()
     if form.validate_on_submit():
         winning_bid = close_auction(cycle, current_user.id)

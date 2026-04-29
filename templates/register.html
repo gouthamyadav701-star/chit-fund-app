@@ -4,12 +4,16 @@
 <div class="auth-card wide">
     <p class="eyebrow">Balaji Chit Funds</p>
     <h2 class="auth-title">Create Account</h2>
-    <p class="auth-subtitle">Customers can register with phone + password. Staff accounts may still need admin approval.</p>
+    <p class="auth-subtitle">Create a new chit-fund business, join an existing business as staff, or register as a customer.</p>
     <form method="post">
         {{ form.hidden_tag() }}
         <label>{{ form.account_type.label }}</label>
         {{ form.account_type(id="account-type") }}
+        <label id="business-code-label">{{ form.business_code.label }}</label>
+        {{ form.business_code(id="business-code-field", placeholder="Enter business code or leave empty to create a new business") }}
         <div id="staff-fields">
+            <label id="business-name-label">{{ form.business_name.label }}</label>
+            {{ form.business_name(id="business-name-field", placeholder="Enter your chit fund business name") }}
             <label>{{ form.username.label }}</label>
             {{ form.username(placeholder="Choose username") }}
             <label>{{ form.role.label }}</label>
@@ -36,6 +40,10 @@
         const customerFields = document.getElementById("customer-fields");
         const emailField = document.getElementById("email-field");
         const emailLabel = document.getElementById("email-label");
+        const businessCodeField = document.getElementById("business-code-field");
+        const businessCodeLabel = document.getElementById("business-code-label");
+        const businessNameField = document.getElementById("business-name-field");
+        const businessNameLabel = document.getElementById("business-name-label");
 
         function syncMode() {
             const isCustomer = !accountType || accountType.value === "Customer";
@@ -50,6 +58,16 @@
             }
             if (emailLabel) {
                 emailLabel.textContent = isCustomer ? "Email (Optional)" : "Email";
+            }
+            if (businessCodeField && businessCodeLabel) {
+                businessCodeLabel.textContent = isCustomer ? "Business Code" : "Business Code (Optional)";
+                businessCodeField.placeholder = isCustomer
+                    ? "Enter your business code"
+                    : "Leave empty to create a new business";
+            }
+            if (!isCustomer && businessNameLabel && businessNameField) {
+                businessNameLabel.textContent = "Business Name (for new business)";
+                businessNameField.placeholder = "Enter new business name";
             }
         }
 
