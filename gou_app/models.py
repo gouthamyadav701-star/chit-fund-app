@@ -28,18 +28,38 @@ class AuditMixin:
     deleted = db.Column(db.Boolean, nullable=False, default=False)
 
 
+class Business(db.Model, AuditMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    code = db.Column(db.String(40), unique=True, nullable=False)
+    contact_phone = db.Column(db.String(30), nullable=True)
+    contact_email = db.Column(db.String(255), nullable=True)
+    receipt_header = db.Column(db.String(255), nullable=True)
+    logo_url = db.Column(db.String(500), nullable=True)
+
+    users = db.relationship("User", lazy="select")
+    members = db.relationship("Member", lazy="select")
+    groups = db.relationship("ChitGroup", lazy="select")
+
+
 class User(UserMixin, db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
+    username = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="Viewer")
     is_approved = db.Column(db.Boolean, nullable=False, default=False)
     member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=True)
     audit_logs = db.relationship("AuditLog", back_populates="actor", lazy="select")
+    business = db.relationship("Business", lazy="select")
     member = db.relationship("Member", lazy="select")
 
-    __table_args__ = (Index("ix_user_username", "username"),)
+    __table_args__ = (
+        Index("ix_user_username", "username"),
+        UniqueConstraint("business_id", "username", name="uq_user_business_username"),
+        UniqueConstraint("business_id", "email", name="uq_user_business_email"),
+    )
 
     @property
     def is_customer(self) -> bool:
@@ -48,7 +68,8 @@ class User(UserMixin, db.Model, AuditMixin):
 
 class ChitGroup(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), unique=True, nullable=False)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
+    name = db.Column(db.String(120), nullable=False)
     monthly_amount = db.Column(db.Numeric(10, 2), nullable=False)
     total_members = db.Column(db.Integer, nullable=False)
     start_date = db.Column(db.Date, nullable=False)
@@ -58,6 +79,7 @@ class ChitGroup(db.Model, AuditMixin):
     retention_expires_on = db.Column(db.Date, nullable=True)
     archive_export_sent_on = db.Column(db.DateTime, nullable=True)
     archived_on = db.Column(db.DateTime, nullable=True)
+    business = db.relationship("Business", lazy="select")
 
     members = db.relationship("Member", back_populates="group", lazy="select")
     schedules = db.relationship(
@@ -113,6 +135,7 @@ class ChitGroup(db.Model, AuditMixin):
 
 class Member(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(255), nullable=True)
     phone = db.Column(db.String(20), nullable=True)
@@ -120,6 +143,7 @@ class Member(db.Model, AuditMixin):
     paid_amount = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("0.00"))
     group_id = db.Column(db.Integer, db.ForeignKey("chit_group.id"), nullable=True)
 
+    business = db.relationship("Business", lazy="select")
     group = db.relationship("ChitGroup", back_populates="members")
     payments = db.relationship("Payment", back_populates="member", lazy="select", cascade="all, delete-orphan")
     memberships = db.relationship(
@@ -131,6 +155,7 @@ class Member(db.Model, AuditMixin):
     ledger_entries = db.relationship("LedgerEntry", back_populates="member", lazy="select")
 
     __table_args__ = (
+        Index("ix_member_business_phone", "business_id", "phone"),
         Index("ix_member_phone", "phone"),
         Index("ix_member_deleted", "deleted"),
     )
@@ -155,6 +180,7 @@ class Member(db.Model, AuditMixin):
 
 class GroupMembership(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey("chit_group.id"), nullable=False)
     joined_on = db.Column(db.Date, nullable=False, default=today_ist)
@@ -166,6 +192,7 @@ class GroupMembership(db.Model, AuditMixin):
     total_dividend = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("0.00"))
     penalty_balance = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("0.00"))
 
+    business = db.relationship("Business", lazy="select")
     member = db.relationship("Member", back_populates="memberships")
     group = db.relationship("ChitGroup", back_populates="memberships")
     payments = db.relationship("Payment", back_populates="membership", lazy="select")
@@ -247,6 +274,7 @@ class GroupMembership(db.Model, AuditMixin):
 
 class ChitCycle(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey("chit_group.id"), nullable=False)
     cycle_number = db.Column(db.Integer, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
@@ -260,6 +288,7 @@ class ChitCycle(db.Model, AuditMixin):
     winning_bid_amount = db.Column(db.Numeric(10, 2), nullable=True)
     winner_membership_id = db.Column(db.Integer, db.ForeignKey("group_membership.id"), nullable=True)
 
+    business = db.relationship("Business", lazy="select")
     group = db.relationship("ChitGroup", back_populates="cycles")
     bids = db.relationship("AuctionBid", back_populates="cycle", lazy="select", cascade="all, delete-orphan")
     payments = db.relationship("Payment", back_populates="cycle", lazy="select")
@@ -284,6 +313,7 @@ class ChitCycle(db.Model, AuditMixin):
 
 class AuctionBid(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     cycle_id = db.Column(db.Integer, db.ForeignKey("chit_cycle.id"), nullable=False)
     membership_id = db.Column(db.Integer, db.ForeignKey("group_membership.id"), nullable=False)
     bid_amount = db.Column(db.Numeric(10, 2), nullable=False)
@@ -291,6 +321,7 @@ class AuctionBid(db.Model, AuditMixin):
     is_winner = db.Column(db.Boolean, nullable=False, default=False)
     note = db.Column(db.String(255), nullable=True)
 
+    business = db.relationship("Business", lazy="select")
     cycle = db.relationship("ChitCycle", back_populates="bids")
     membership = db.relationship("GroupMembership", back_populates="bids")
     ledger_entries = db.relationship("LedgerEntry", back_populates="auction_bid", lazy="select")
@@ -303,6 +334,7 @@ class AuctionBid(db.Model, AuditMixin):
 
 class Payment(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey("chit_group.id"), nullable=True)
     membership_id = db.Column(db.Integer, db.ForeignKey("group_membership.id"), nullable=True)
@@ -314,6 +346,7 @@ class Payment(db.Model, AuditMixin):
     due_date = db.Column(db.Date, nullable=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+    business = db.relationship("Business", lazy="select")
     member = db.relationship("Member", back_populates="payments")
     group = db.relationship("ChitGroup", back_populates="payments")
     membership = db.relationship("GroupMembership", back_populates="payments")
@@ -349,10 +382,12 @@ class Payment(db.Model, AuditMixin):
 
 class InstallmentSchedule(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey("chit_group.id"), nullable=False)
     round_number = db.Column(db.Integer, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
     expected_amount = db.Column(db.Numeric(10, 2), nullable=False)
+    business = db.relationship("Business", lazy="select")
     group = db.relationship("ChitGroup", back_populates="schedules")
 
     __table_args__ = (Index("ix_schedule_group_round", "group_id", "round_number", unique=True),)
@@ -360,6 +395,7 @@ class InstallmentSchedule(db.Model, AuditMixin):
 
 class LedgerEntry(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     group_id = db.Column(db.Integer, db.ForeignKey("chit_group.id"), nullable=True)
     member_id = db.Column(db.Integer, db.ForeignKey("member.id"), nullable=True)
     membership_id = db.Column(db.Integer, db.ForeignKey("group_membership.id"), nullable=True)
@@ -370,6 +406,7 @@ class LedgerEntry(db.Model, AuditMixin):
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     description = db.Column(db.String(255), nullable=False)
 
+    business = db.relationship("Business", lazy="select")
     group = db.relationship("ChitGroup", back_populates="ledger_entries")
     member = db.relationship("Member", back_populates="ledger_entries")
     membership = db.relationship("GroupMembership", back_populates="ledger_entries")
@@ -385,6 +422,7 @@ class LedgerEntry(db.Model, AuditMixin):
 
 class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("business.id"), nullable=True)
     actor_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     action = db.Column(db.String(80), nullable=False)
     entity_type = db.Column(db.String(80), nullable=False)
@@ -394,6 +432,7 @@ class AuditLog(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
     actor = db.relationship("User", back_populates="audit_logs")
+    business = db.relationship("Business", lazy="select")
 
     __table_args__ = (Index("ix_audit_entity", "entity_type", "entity_id"),)
 

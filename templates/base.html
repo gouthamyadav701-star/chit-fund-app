@@ -77,6 +77,16 @@
             font-weight: 700;
             letter-spacing: -0.03em;
         }
+        .brand-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            object-fit: cover;
+            display: block;
+            margin-bottom: 12px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+        }
         .brand-sub {
             margin-top: 4px;
             color: var(--muted);
@@ -508,8 +518,11 @@
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
         <aside class="sidebar">
             <div class="brand-block">
-                <div class="brand-mark">◈ Balaji Chit Funds</div>
-                <div class="brand-sub">secure chit operations</div>
+                {% if active_business and active_business.logo_url %}
+                <img class="brand-logo" src="{{ active_business.logo_url }}" alt="{{ active_business.name }} logo">
+                {% endif %}
+                <div class="brand-mark">◈ {{ active_business.name if active_business else 'Balaji Chit Funds' }}</div>
+                <div class="brand-sub">{{ active_business.code if active_business else 'secure chit operations' }}</div>
             </div>
 
             <div class="nav-section">Overview</div>
@@ -529,6 +542,10 @@
             <div class="nav-section">Quick Actions</div>
             <a class="nav-link" href="{{ url_for('members.add_member') }}">Add Member</a>
             <a class="nav-link" href="{{ url_for('members.create_group') }}">Create Group</a>
+            {% endif %}
+            {% if current_user.role == 'Admin' %}
+            <div class="nav-section">Business</div>
+            <a class="nav-link {% if request.endpoint == 'core.business_settings' %}active{% endif %}" href="{{ url_for('core.business_settings') }}">Business Settings</a>
             {% endif %}
             {% endif %}
 

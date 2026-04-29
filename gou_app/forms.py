@@ -43,6 +43,8 @@ class RegisterForm(FlaskForm):
         validators=[DataRequired()],
         default="Customer",
     )
+    business_name = StringField("Business Name", validators=[Optional()])
+    business_code = StringField("Business Code", validators=[Optional()])
     username = StringField("Username", validators=[Optional()])
     email = StringField("Email", validators=[Optional(), Email()])
     phone = StringField(
@@ -70,6 +72,9 @@ class RegisterForm(FlaskForm):
             if not (self.phone.data or "").strip():
                 self.phone.errors.append("Phone number is required for customer accounts.")
                 return False
+            if not (self.business_code.data or "").strip():
+                self.business_code.errors.append("Business code is required for customer accounts.")
+                return False
         else:
             if not (self.username.data or "").strip():
                 self.username.errors.append("Username is required for staff accounts.")
@@ -80,13 +85,29 @@ class RegisterForm(FlaskForm):
             if not self.role.data:
                 self.role.errors.append("Role is required for staff accounts.")
                 return False
+            if not (self.business_name.data or "").strip() and not (self.business_code.data or "").strip():
+                self.business_name.errors.append("Enter a new business name or an existing business code.")
+                return False
         return True
 
 
 class LoginForm(FlaskForm):
+    business_code = StringField("Business Code", validators=[DataRequired()])
     username = StringField("Username or Phone", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Login")
+
+
+class BusinessSettingsForm(FlaskForm):
+    name = StringField("Business Name", validators=[DataRequired()])
+    contact_phone = StringField(
+        "Contact Phone",
+        validators=[Optional(), Regexp(r"^\+?\d{10,15}$", message="Use a valid phone number.")],
+    )
+    contact_email = StringField("Contact Email", validators=[Optional(), Email()])
+    receipt_header = StringField("Receipt Header", validators=[Optional()])
+    logo_url = StringField("Logo Image URL", validators=[Optional()])
+    submit = SubmitField("Save Settings")
 
 
 class MemberForm(FlaskForm):

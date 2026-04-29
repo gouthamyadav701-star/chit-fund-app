@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Business Settings{% endblock %}
+{% block topbar_title %}Business Settings{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Business Settings</h1>
+        <p class="muted" style="margin:8px 0 0;">Update how your chit-fund office appears across the dashboard and receipts.</p>
+    </div>
+</div>
+
+<div class="split">
+    <div class="card">
+        <form method="post">
+            {{ form.hidden_tag() }}
+            <label>{{ form.name.label }}</label>
+            {{ form.name(placeholder="Enter your business name") }}
+
+            <label>{{ form.contact_phone.label }}</label>
+            {{ form.contact_phone(placeholder="Enter office phone number") }}
+
+            <label>{{ form.contact_email.label }}</label>
+            {{ form.contact_email(placeholder="Enter office email") }}
+
+            <label>{{ form.receipt_header.label }}</label>
+            {{ form.receipt_header(placeholder="Optional receipt tagline or address line") }}
+
+            <label>{{ form.logo_url.label }}</label>
+            {{ form.logo_url(placeholder="https://example.com/logo.png") }}
+
+            {{ form.submit() }}
+        </form>
+    </div>
+
+    <div class="stack">
+        <div class="card">
+            <h2 style="margin-top:0;">Business Code</h2>
+            <p class="muted">Share this with your staff and customers so they can register into the correct business.</p>
+            <div class="metric mono" style="font-size:24px;">{{ business.code }}</div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-top:0;">Receipt Preview</h2>
+            <div class="muted" style="margin-bottom:12px;">This is the branding style used in PDFs.</div>
+            {% if business.logo_url %}
+            <img src="{{ business.logo_url }}" alt="{{ business.name }} logo" style="width:72px;height:72px;border-radius:18px;object-fit:cover;border:1px solid var(--line);margin-bottom:14px;">
+            {% endif %}
+            <strong style="display:block;font-size:20px;">{{ form.name.data or business.name }}</strong>
+            {% if form.receipt_header.data or business.receipt_header %}
+            <div class="muted" style="margin-top:8px;">{{ form.receipt_header.data or business.receipt_header }}</div>
+            {% endif %}
+            {% if form.contact_phone.data or business.contact_phone or form.contact_email.data or business.contact_email %}
+            <div class="muted" style="margin-top:8px;">
+                {{ form.contact_phone.data or business.contact_phone or '' }}
+                {% if (form.contact_phone.data or business.contact_phone) and (form.contact_email.data or business.contact_email) %} | {% endif %}
+                {{ form.contact_email.data or business.contact_email or '' }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

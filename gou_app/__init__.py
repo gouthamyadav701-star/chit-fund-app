@@ -15,6 +15,7 @@ from .blueprints.api import api_bp
 from .blueprints.auctions import auctions_bp
 from .extensions import bcrypt, csrf, db, limiter, login_manager, mail, migrate
 from .services import process_group_retention
+from .tenant import current_business
 
 
 def configure_logging(app: Flask) -> None:
@@ -41,7 +42,20 @@ def ensure_runtime_schema(app: Flask) -> None:
 
         statements: list[str] = []
 
+        business_columns = columns_for("business")
+        if business_columns:
+            if "contact_phone" not in business_columns:
+                statements.append("ALTER TABLE business ADD COLUMN contact_phone VARCHAR(30)")
+            if "contact_email" not in business_columns:
+                statements.append("ALTER TABLE business ADD COLUMN contact_email VARCHAR(255)")
+            if "receipt_header" not in business_columns:
+                statements.append("ALTER TABLE business ADD COLUMN receipt_header VARCHAR(255)")
+            if "logo_url" not in business_columns:
+                statements.append("ALTER TABLE business ADD COLUMN logo_url VARCHAR(500)")
+
         chit_group_columns = columns_for("chit_group")
+        if "business_id" not in chit_group_columns:
+            statements.append("ALTER TABLE chit_group ADD COLUMN business_id INTEGER")
         if "auction_day" not in chit_group_columns:
             statements.append(
                 "ALTER TABLE chit_group ADD COLUMN auction_day INTEGER NOT NULL DEFAULT 5"
@@ -57,6 +71,8 @@ def ensure_runtime_schema(app: Flask) -> None:
 
         membership_columns = columns_for("group_membership")
         if membership_columns:
+            if "business_id" not in membership_columns:
+                statements.append("ALTER TABLE group_membership ADD COLUMN business_id INTEGER")
             if "share_units" not in membership_columns:
                 statements.append(
                     "ALTER TABLE group_membership ADD COLUMN share_units NUMERIC(4, 2) NOT NULL DEFAULT 1.00"
@@ -66,8 +82,22 @@ def ensure_runtime_schema(app: Flask) -> None:
                     "ALTER TABLE group_membership ADD COLUMN slot_number INTEGER NOT NULL DEFAULT 1"
                 )
 
+        member_columns = columns_for("member")
+        if member_columns and "business_id" not in member_columns:
+            statements.append("ALTER TABLE member ADD COLUMN business_id INTEGER")
+
+        cycle_columns = columns_for("chit_cycle")
+        if cycle_columns and "business_id" not in cycle_columns:
+            statements.append("ALTER TABLE chit_cycle ADD COLUMN business_id INTEGER")
+
+        bid_columns = columns_for("auction_bid")
+        if bid_columns and "business_id" not in bid_columns:
+            statements.append("ALTER TABLE auction_bid ADD COLUMN business_id INTEGER")
+
         payment_columns = columns_for("payment")
         if payment_columns:
+            if "business_id" not in payment_columns:
+                statements.append("ALTER TABLE payment ADD COLUMN business_id INTEGER")
             if "group_id" not in payment_columns:
                 statements.append("ALTER TABLE payment ADD COLUMN group_id INTEGER")
             if "membership_id" not in payment_columns:
@@ -89,15 +119,71 @@ def ensure_runtime_schema(app: Flask) -> None:
             if "due_date" not in payment_columns:
                 statements.append("ALTER TABLE payment ADD COLUMN due_date DATE")
 
+        schedule_columns = columns_for("installment_schedule")
+        if schedule_columns and "business_id" not in schedule_columns:
+            statements.append("ALTER TABLE installment_schedule ADD COLUMN business_id INTEGER")
+
+        ledger_columns = columns_for("ledger_entry")
+        if ledger_columns and "business_id" not in ledger_columns:
+            statements.append("ALTER TABLE ledger_entry ADD COLUMN business_id INTEGER")
+
+        audit_columns = columns_for("audit_log")
+        if audit_columns and "business_id" not in audit_columns:
+            statements.append("ALTER TABLE audit_log ADD COLUMN business_id INTEGER")
+
         user_columns = columns_for("user")
-        if user_columns and "member_id" not in user_columns:
-            statements.append("ALTER TABLE \"user\" ADD COLUMN member_id INTEGER")
+        if user_columns:
+            if "member_id" not in user_columns:
+                statements.append("ALTER TABLE \"user\" ADD COLUMN member_id INTEGER")
+            if "business_id" not in user_columns:
+                statements.append("ALTER TABLE \"user\" ADD COLUMN business_id INTEGER")
 
         if statements:
             with db.engine.begin() as connection:
                 for statement in statements:
                     connection.execute(text(statement))
             app.logger.info("Applied runtime schema compatibility updates: %s", statements)
+            inspector = inspect(db.engine)
+
+        with db.engine.begin() as connection:
+            default_business_id = connection.execute(text("SELECT id FROM business ORDER BY id ASC LIMIT 1")).scalar()
+            if default_business_id is None:
+                now = datetime.utcnow()
+                connection.execute(
+                    text(
+                        "INSERT INTO business (name, code, created_at, updated_at, deleted) "
+                        "VALUES (:name, :code, :created_at, :updated_at, :deleted)"
+                    ),
+                    {
+                        "name": "Default Chit Business",
+                        "code": "default",
+                        "created_at": now,
+                        "updated_at": now,
+                        "deleted": False,
+                    },
+                )
+                default_business_id = connection.execute(text("SELECT id FROM business ORDER BY id ASC LIMIT 1")).scalar()
+
+            if default_business_id is not None:
+                for table_name in [
+                    "user",
+                    "member",
+                    "chit_group",
+                    "group_membership",
+                    "chit_cycle",
+                    "auction_bid",
+                    "payment",
+                    "installment_schedule",
+                    "ledger_entry",
+                    "audit_log",
+                ]:
+                    table_columns = columns_for(table_name)
+                    if "business_id" in table_columns:
+                        quoted_table = f'"{table_name}"' if table_name == "user" else table_name
+                        connection.execute(
+                            text(f"UPDATE {quoted_table} SET business_id = :business_id WHERE business_id IS NULL"),
+                            {"business_id": default_business_id},
+                        )
 
 
 def create_app() -> Flask:
@@ -115,6 +201,10 @@ def create_app() -> Flask:
     login_manager.init_app(app)
 
     ensure_runtime_schema(app)
+
+    @app.context_processor
+    def inject_business_context():
+        return {"active_business": current_business()}
 
     app.extensions["group_retention_last_run_at"] = None
 

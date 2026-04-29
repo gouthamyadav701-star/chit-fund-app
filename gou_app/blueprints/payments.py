@@ -13,13 +13,13 @@ payments_bp = Blueprint("payments", __name__)
 @payments_bp.route("/payments/<int:member_id>/new", methods=["GET", "POST"])
 @manager_required
 def make_payment(member_id):
-    member = Member.query.filter_by(id=member_id, deleted=False).first_or_404()
+    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
     form = PaymentForm()
     active_memberships = [membership for membership in member.active_memberships if membership.group and not membership.deleted]
     form.membership_id.choices = [(membership.id, f"{membership.display_label} - {membership.payment_status}") for membership in active_memberships]
 
     if form.validate_on_submit():
-        membership = GroupMembership.query.filter_by(id=form.membership_id.data, deleted=False).first_or_404()
+        membership = GroupMembership.query.filter_by(id=form.membership_id.data, business_id=current_user.business_id, deleted=False).first_or_404()
         payment = create_payment(member, membership, round(form.amount.data, 2), current_user.id)
         db.session.commit()
         queue_payment_notifications(member, payment)
@@ -36,17 +36,18 @@ def history():
     query = Payment.query.filter_by(deleted=False)
 
     if current_user.role == "Customer":
-        member = Member.query.filter_by(id=current_user.member_id, deleted=False).first_or_404()
+        member = Member.query.filter_by(id=current_user.member_id, business_id=current_user.business_id, deleted=False).first_or_404()
         groups = sorted({payment.group for payment in member.payments if payment.group and not payment.deleted}, key=lambda item: item.name)
         form.member_id.choices = [(member.id, member.name)]
         form.group_id.choices = [(0, "My Groups")] + [(group.id, group.name) for group in groups]
         form.member_id.data = member.id
         query = query.filter_by(member_id=member.id)
     else:
-        members = Member.query.filter_by(deleted=False).order_by(Member.name).all()
-        groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+        members = Member.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(Member.name).all()
+        groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
         form.member_id.choices = [(0, "All Members")] + [(member.id, member.name) for member in members]
         form.group_id.choices = [(0, "All Groups")] + [(group.id, group.name) for group in groups]
+        query = query.filter_by(business_id=current_user.business_id)
         if form.member_id.data:
             query = query.filter_by(member_id=form.member_id.data)
 
@@ -72,6 +73,8 @@ def export_excel():
         if not current_user.member_id:
             abort(403)
         query = query.filter_by(member_id=current_user.member_id)
+    else:
+        query = query.filter_by(business_id=current_user.business_id)
     payments = query.order_by(Payment.timestamp.desc()).all()
     workbook = build_payment_excel(payments)
     return send_file(
@@ -85,7 +88,7 @@ def export_excel():
 @payments_bp.route("/payments/receipt/<int:payment_id>")
 @login_required
 def receipt(payment_id):
-    payment = Payment.query.filter_by(id=payment_id, deleted=False).first_or_404()
+    payment = Payment.query.filter_by(id=payment_id, business_id=current_user.business_id, deleted=False).first_or_404()
     if current_user.role == "Customer" and payment.member_id != current_user.member_id:
         abort(403)
     pdf_file = build_receipt_pdf(payment)

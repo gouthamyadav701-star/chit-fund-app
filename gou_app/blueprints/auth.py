@@ -5,7 +5,8 @@ from werkzeug.security import check_password_hash
 from ..decorators import admin_required
 from ..extensions import bcrypt, db, limiter
 from ..forms import EmptyForm, LoginForm, RegisterForm
-from ..models import Member, User
+from ..models import Business, Member, User
+from ..tenant import generate_business_code, normalize_business_code
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -18,34 +19,35 @@ def register():
     form = RegisterForm()
     if form.validate_on_submit():
         try:
-            first_user = User.query.count() == 0
-            if first_user and form.account_type.data == "Customer":
-                flash("Create the first admin/staff account before customer accounts.", "warning")
-                return render_template("register.html", form=form)
-
+            business_code = normalize_business_code(form.business_code.data or "")
             if form.account_type.data == "Customer":
                 phone = (form.phone.data or "").strip()
-                member = Member.query.filter_by(phone=phone, deleted=False).first()
-                if not member:
-                    flash("Phone number not found in member records. Contact office/admin first.", "danger")
+                business = Business.query.filter_by(code=business_code, deleted=False).first()
+                if not business:
+                    flash("Business code not found.", "danger")
                     return render_template("register.html", form=form)
-                if User.query.filter_by(member_id=member.id, deleted=False).first():
+                member = Member.query.filter_by(phone=phone, business_id=business.id, deleted=False).first()
+                if not member:
+                    flash("Phone number not found in this business records. Contact office/admin first.", "danger")
+                    return render_template("register.html", form=form)
+                if User.query.filter_by(member_id=member.id, business_id=business.id, deleted=False).first():
                     flash("An account already exists for this member.", "warning")
                     return render_template("register.html", form=form)
 
                 username = phone
                 email = ((form.email.data or "").strip().lower() or f"{phone.replace('+', '')}@member.local")
 
-                if User.query.filter_by(username=username).first():
+                if User.query.filter_by(username=username, business_id=business.id).first():
                     flash("An account already exists with this phone number.", "danger")
                     return render_template("register.html", form=form)
-                if User.query.filter_by(email=email).first():
+                if User.query.filter_by(email=email, business_id=business.id).first():
                     email = f"{phone.replace('+', '')}.{member.id}@member.local"
-                    if User.query.filter_by(email=email).first():
+                    if User.query.filter_by(email=email, business_id=business.id).first():
                         flash("An account already exists for this member contact.", "danger")
                         return render_template("register.html", form=form)
 
                 new_user = User(
+                    business_id=business.id,
                     username=username,
                     email=email,
                     password_hash=bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
@@ -55,23 +57,43 @@ def register():
                 )
                 success_message = "Customer account created. Please log in."
             else:
+                business_name = (form.business_name.data or "").strip()
                 username = (form.username.data or "").strip()
                 email = (form.email.data or "").strip().lower()
-                if User.query.filter_by(username=username).first():
-                    flash("Username already exists.", "danger")
-                    return render_template("register.html", form=form)
-                if User.query.filter_by(email=email).first():
-                    flash("Email already exists.", "danger")
-                    return render_template("register.html", form=form)
+
+                if business_code:
+                    business = Business.query.filter_by(code=business_code, deleted=False).first()
+                    if not business:
+                        flash("Business code not found.", "danger")
+                        return render_template("register.html", form=form)
+                    if User.query.filter_by(username=username, business_id=business.id).first():
+                        flash("Username already exists in this business.", "danger")
+                        return render_template("register.html", form=form)
+                    if User.query.filter_by(email=email, business_id=business.id).first():
+                        flash("Email already exists in this business.", "danger")
+                        return render_template("register.html", form=form)
+                    role = form.role.data
+                    is_approved = False
+                    success_message = "Staff account created. Wait for business admin approval."
+                else:
+                    business = Business(
+                        name=business_name,
+                        code=generate_business_code(business_name),
+                    )
+                    db.session.add(business)
+                    db.session.flush()
+                    role = "Admin"
+                    is_approved = True
+                    success_message = f"Business created. Your business code is {business.code}. Please log in."
 
                 new_user = User(
+                    business_id=business.id,
                     username=username,
                     email=email,
                     password_hash=bcrypt.generate_password_hash(form.password.data).decode("utf-8"),
-                    role="Admin" if first_user else form.role.data,
-                    is_approved=first_user,
+                    role=role,
+                    is_approved=is_approved,
                 )
-                success_message = "Admin account created. Please log in." if first_user else "Registered. Wait for admin approval."
 
             db.session.add(new_user)
             db.session.commit()
@@ -93,12 +115,18 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
+        business_code = normalize_business_code(form.business_code.data)
+        business = Business.query.filter_by(code=business_code, deleted=False).first()
+        if not business:
+            flash("Business code not found.", "danger")
+            return render_template("login.html", form=form)
+
         identifier = form.username.data.strip()
-        user = User.query.filter_by(username=identifier, deleted=False).first()
+        user = User.query.filter_by(username=identifier, business_id=business.id, deleted=False).first()
         if not user:
-            member = Member.query.filter_by(phone=identifier, deleted=False).first()
+            member = Member.query.filter_by(phone=identifier, business_id=business.id, deleted=False).first()
             if member:
-                user = User.query.filter_by(member_id=member.id, deleted=False).first()
+                user = User.query.filter_by(member_id=member.id, business_id=business.id, deleted=False).first()
         password_ok = False
         if user:
             try:
@@ -137,7 +165,7 @@ def logout():
 def approve_user(user_id):
     form = EmptyForm()
     if form.validate_on_submit():
-        user = User.query.get_or_404(user_id)
+        user = User.query.filter_by(id=user_id, business_id=current_user.business_id, deleted=False).first_or_404()
         user.is_approved = True
         user.updated_by = current_user.id
         db.session.commit()
@@ -150,7 +178,7 @@ def approve_user(user_id):
 def delete_user(user_id):
     form = EmptyForm()
     if form.validate_on_submit():
-        user = User.query.get_or_404(user_id)
+        user = User.query.filter_by(id=user_id, business_id=current_user.business_id, deleted=False).first_or_404()
         if user.id == current_user.id:
             flash("You cannot delete your own account.", "danger")
             return redirect(url_for("core.dashboard"))

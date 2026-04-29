@@ -1,11 +1,13 @@
 from sqlalchemy import text
-from flask import Blueprint, Response, current_app, jsonify, render_template, request, url_for
+from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from ..decorators import admin_required
 from ..extensions import db
-from ..forms import EmptyForm, RoundForm
+from ..forms import BusinessSettingsForm, EmptyForm, RoundForm
 from ..models import ChitGroup, ChitCycle, GroupMembership, Member, User
-from ..services import build_dashboard_metrics
+from ..services import build_dashboard_metrics, log_audit
+from ..tenant import current_business, current_business_id
 
 core_bp = Blueprint("core", __name__)
 
@@ -14,7 +16,11 @@ core_bp = Blueprint("core", __name__)
 @login_required
 def dashboard():
     if current_user.role == "Customer":
-        member = Member.query.filter_by(id=current_user.member_id, deleted=False).first() if current_user.member_id else None
+        member = (
+            Member.query.filter_by(id=current_user.member_id, business_id=current_user.business_id, deleted=False).first()
+            if current_user.member_id
+            else None
+        )
         recent_payments = []
         if member:
             recent_payments = sorted(
@@ -22,8 +28,9 @@ def dashboard():
                 key=lambda item: item.timestamp or item.created_at,
                 reverse=True,
             )[:8]
-        return render_template("customer_dashboard.html", member=member, recent_payments=recent_payments)
+        return render_template("customer_dashboard.html", member=member, recent_payments=recent_payments, business=current_business())
 
+    business_id = current_business_id()
     search = (request.args.get("q") or "").strip().lower()
     members = []
     groups = []
@@ -42,7 +49,7 @@ def dashboard():
     }
 
     try:
-        members = Member.query.filter_by(deleted=False).order_by(Member.name).all()
+        members = Member.query.filter_by(deleted=False, business_id=business_id).order_by(Member.name).all()
         if search:
             members = [
                 member
@@ -55,14 +62,18 @@ def dashboard():
         current_app.logger.exception("Dashboard member query failed")
 
     try:
-        groups = ChitGroup.query.filter_by(deleted=False).order_by(ChitGroup.name).all()
+        groups = ChitGroup.query.filter_by(deleted=False, business_id=business_id).order_by(ChitGroup.name).all()
         round_forms = {group.id: RoundForm(next_round=str(min(group.current_round + 1, group.total_members))) for group in groups}
     except Exception:
         current_app.logger.exception("Dashboard group query failed")
 
     try:
         if current_user.role == "Admin":
-            pending_users = User.query.filter_by(is_approved=False, deleted=False).order_by(User.created_at.asc()).all()
+            pending_users = (
+                User.query.filter_by(is_approved=False, deleted=False, business_id=business_id)
+                .order_by(User.created_at.asc())
+                .all()
+            )
     except Exception:
         current_app.logger.exception("Dashboard pending users query failed")
 
@@ -72,7 +83,11 @@ def dashboard():
         current_app.logger.exception("Dashboard metrics build failed")
 
     try:
-        active_cycles = ChitCycle.query.filter_by(deleted=False).order_by(ChitCycle.auction_date.asc()).all()
+        active_cycles = (
+            ChitCycle.query.filter_by(deleted=False, business_id=business_id)
+            .order_by(ChitCycle.auction_date.asc())
+            .all()
+        )
     except Exception:
         current_app.logger.exception("Dashboard cycles query failed")
 
@@ -86,6 +101,7 @@ def dashboard():
         metrics=metrics,
         active_cycles=active_cycles,
         search=search,
+        business=current_business(),
     )
 
 
@@ -93,6 +109,36 @@ def dashboard():
 def health():
     db.session.execute(text("SELECT 1"))
     return jsonify({"status": "ok", "db": "connected"})
+
+
+@core_bp.route("/business/settings", methods=["GET", "POST"])
+@login_required
+@admin_required
+def business_settings():
+    business = current_business()
+    if not business:
+        abort(404)
+
+    form = BusinessSettingsForm(obj=business)
+    if form.validate_on_submit():
+        business.name = form.name.data.strip()
+        business.contact_phone = (form.contact_phone.data or "").strip() or None
+        business.contact_email = (form.contact_email.data or "").strip().lower() or None
+        business.receipt_header = (form.receipt_header.data or "").strip() or None
+        business.logo_url = (form.logo_url.data or "").strip() or None
+        business.updated_by = current_user.id
+        log_audit(
+            current_user.id,
+            "business.updated",
+            "Business",
+            business.id,
+            {"name": business.name, "code": business.code},
+        )
+        db.session.commit()
+        flash("Business settings updated.", "success")
+        return redirect(url_for("core.business_settings"))
+
+    return render_template("business_settings.html", form=form, business=business)
 
 
 @core_bp.route("/manifest.webmanifest")

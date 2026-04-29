@@ -20,6 +20,7 @@ from .extensions import db, mail
 from .models import (
     AuditLog,
     AuctionBid,
+    Business,
     ChitCycle,
     ChitGroup,
     GroupMembership,
@@ -30,11 +31,17 @@ from .models import (
     User,
     today_ist,
 )
+from .tenant import current_business_id
 
 
 def log_audit(actor_id: int | None, action: str, entity_type: str, entity_id: str | int, details: dict | None = None) -> None:
     details_payload = json.dumps(details or {}, default=str)
+    business_id = current_business_id()
+    if business_id is None and actor_id:
+        actor = User.query.filter_by(id=actor_id, deleted=False).first()
+        business_id = actor.business_id if actor else None
     audit_log = AuditLog(
+        business_id=business_id,
         actor_user_id=actor_id,
         action=action,
         entity_type=entity_type,
@@ -50,6 +57,7 @@ def generate_installment_schedule(group: ChitGroup, actor_id: int | None = None)
     for round_number in range(1, group.total_members + 1):
         due_date = group.start_date + relativedelta(months=round_number - 1)
         schedule = InstallmentSchedule(
+            business_id=group.business_id,
             round_number=round_number,
             due_date=due_date,
             expected_amount=group.monthly_amount,
@@ -65,6 +73,7 @@ def generate_group_cycles(group: ChitGroup, actor_id: int | None = None) -> None
         due_date = group.start_date + relativedelta(months=cycle_number - 1)
         auction_date = due_date + timedelta(days=max(group.auction_day - 1, 0))
         cycle = ChitCycle(
+            business_id=group.business_id,
             cycle_number=cycle_number,
             due_date=due_date,
             auction_date=auction_date,
@@ -95,6 +104,7 @@ def enroll_member_in_group(
         slot_number = max(existing_slots, default=0) + 1
 
     membership = GroupMembership(
+        business_id=group.business_id,
         member=member,
         group=group,
         is_primary=is_primary,
@@ -132,6 +142,7 @@ def create_payment(member: Member, membership: GroupMembership, amount: float, a
     penalty_amount = compute_penalty(max(expected_amount - membership.current_cycle_paid_amount, 0), due_date)
     status = "Paid" if amount >= expected_amount else "Partial"
     payment = Payment(
+        business_id=membership.business_id,
         member=member,
         group=membership.group,
         membership=membership,
@@ -155,6 +166,7 @@ def create_payment(member: Member, membership: GroupMembership, amount: float, a
 
     db.session.add(
         LedgerEntry(
+            business_id=membership.business_id,
             group=membership.group,
             member=member,
             membership=membership,
@@ -170,6 +182,7 @@ def create_payment(member: Member, membership: GroupMembership, amount: float, a
     if penalty_amount:
         db.session.add(
             LedgerEntry(
+                business_id=membership.business_id,
                 group=membership.group,
                 member=member,
                 membership=membership,
@@ -207,6 +220,7 @@ def assign_cycle_winner(
     note: str | None = None,
 ) -> AuctionBid:
     winning_bid = AuctionBid(
+        business_id=cycle.business_id,
         cycle=cycle,
         membership=membership,
         bid_amount=payout_amount,
@@ -252,6 +266,7 @@ def _apply_cycle_winner(cycle: ChitCycle, winning_bid: AuctionBid, payout_amount
         membership.total_dividend = round(float(membership.total_dividend) + member_dividend, 2)
         db.session.add(
             LedgerEntry(
+                business_id=cycle.business_id,
                 group=cycle.group,
                 member=membership.member,
                 membership=membership,
@@ -267,6 +282,7 @@ def _apply_cycle_winner(cycle: ChitCycle, winning_bid: AuctionBid, payout_amount
 
     db.session.add(
         LedgerEntry(
+            business_id=cycle.business_id,
             group=cycle.group,
             member=winning_bid.membership.member,
             membership=winning_bid.membership,
@@ -282,16 +298,29 @@ def _apply_cycle_winner(cycle: ChitCycle, winning_bid: AuctionBid, payout_amount
 
 def pending_memberships(group_id: int | None = None) -> list[GroupMembership]:
     query = GroupMembership.query.filter_by(status="Active", deleted=False)
+    business_id = current_business_id()
+    if business_id:
+        query = query.filter_by(business_id=business_id)
     if group_id:
         query = query.filter_by(group_id=group_id)
     return [membership for membership in query.order_by(GroupMembership.id.asc()).all() if membership.payment_status != "Paid"]
 
 
 def build_dashboard_metrics():
-    groups = ChitGroup.query.filter_by(deleted=False).all()
-    payments = Payment.query.filter_by(deleted=False).all()
-    memberships = GroupMembership.query.filter_by(deleted=False).all()
-    cycles = ChitCycle.query.filter_by(deleted=False).all()
+    business_id = current_business_id()
+    group_query = ChitGroup.query.filter_by(deleted=False)
+    payment_query = Payment.query.filter_by(deleted=False)
+    membership_query = GroupMembership.query.filter_by(deleted=False)
+    cycle_query = ChitCycle.query.filter_by(deleted=False)
+    if business_id:
+        group_query = group_query.filter_by(business_id=business_id)
+        payment_query = payment_query.filter_by(business_id=business_id)
+        membership_query = membership_query.filter_by(business_id=business_id)
+        cycle_query = cycle_query.filter_by(business_id=business_id)
+    groups = group_query.all()
+    payments = payment_query.all()
+    memberships = membership_query.all()
+    cycles = cycle_query.all()
     total_collections = round(sum(float(payment.amount) for payment in payments), 2)
     total_penalties = round(sum(float(payment.penalty_amount) for payment in payments), 2)
     overdue_memberships = [membership for membership in memberships if membership.payment_status == "Overdue"]
@@ -482,9 +511,9 @@ def build_group_archive_excel(group: ChitGroup) -> BytesIO:
     return output
 
 
-def _admin_emails() -> list[str]:
+def _admin_emails(business_id: int | None = None) -> list[str]:
     admins = (
-        User.query.filter_by(role="Admin", is_approved=True, deleted=False)
+        User.query.filter_by(role="Admin", is_approved=True, deleted=False, business_id=business_id)
         .order_by(User.id.asc())
         .all()
     )
@@ -496,7 +525,7 @@ def _mail_ready() -> bool:
 
 
 def email_group_archive(group: ChitGroup) -> bool:
-    recipients = _admin_emails()
+    recipients = _admin_emails(group.business_id)
     if not recipients or not _mail_ready():
         current_app.logger.warning("Skipping group archive email for %s because mail is not configured or no admin email exists.", group.name)
         return False
@@ -601,11 +630,22 @@ def build_receipt_pdf(payment: Payment) -> BytesIO:
     temp_file.close()
 
     try:
+        business = payment.business or payment.member.business
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Helvetica", "B", 18)
-        pdf.cell(0, 12, "CHIT FUND RECEIPT", ln=1, align="C")
+        pdf.set_font("Helvetica", "B", 17)
+        pdf.cell(0, 10, (business.name if business else "Chit Fund Receipt"), ln=1, align="C")
+        if business and business.receipt_header:
+            pdf.set_font("Helvetica", size=11)
+            pdf.multi_cell(0, 7, business.receipt_header, align="C")
+        if business and (business.contact_phone or business.contact_email):
+            pdf.set_font("Helvetica", size=10)
+            contact_line = " | ".join(item for item in [business.contact_phone, business.contact_email] if item)
+            pdf.cell(0, 7, contact_line, ln=1, align="C")
         pdf.ln(6)
+        pdf.set_font("Helvetica", "B", 15)
+        pdf.cell(0, 10, "CHIT FUND RECEIPT", ln=1, align="C")
+        pdf.ln(2)
         pdf.set_font("Helvetica", size=12)
         pdf.cell(0, 10, f"Member: {payment.member.name}", ln=1)
         pdf.cell(0, 10, f"Group: {payment.group.name if payment.group else 'Unassigned'}", ln=1)
@@ -647,8 +687,15 @@ def build_member_history_pdf(member: Member) -> BytesIO:
     temp_file.close()
 
     try:
+        business = member.business
         pdf = FPDF()
         pdf.add_page()
+        pdf.set_font("Helvetica", "B", 17)
+        pdf.cell(0, 10, (business.name if business else "Chit Fund"), ln=1, align="C")
+        if business and business.receipt_header:
+            pdf.set_font("Helvetica", size=11)
+            pdf.multi_cell(0, 7, business.receipt_header, align="C")
+        pdf.ln(2)
         pdf.set_font("Helvetica", "B", 18)
         pdf.cell(0, 12, "MEMBER PAYMENT HISTORY", ln=1, align="C")
         pdf.ln(4)
