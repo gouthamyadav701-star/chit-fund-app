@@ -9,11 +9,11 @@ from .models import Business
 
 def normalize_business_code(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9]+", "-", (value or "").strip().lower()).strip("-")
-    return cleaned[:32] or "business"
+    return cleaned[:32]
 
 
 def generate_business_code(name: str) -> str:
-    base = normalize_business_code(name)
+    base = normalize_business_code(name) or "business"
     code = base
     suffix = 2
     while Business.query.filter_by(code=code, deleted=False).first():
