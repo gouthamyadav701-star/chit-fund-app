@@ -4,10 +4,18 @@ from flask_login import current_user, login_required
 from ..decorators import manager_required
 from ..extensions import db
 from ..forms import AuctionBidForm, AuctionCloseForm
-from ..models import AuctionBid, ChitCycle, GroupMembership
+from ..models import AuctionBid, ChitCycle, ChitGroup, GroupMembership
 from ..services import assign_cycle_winner, close_auction, log_audit
 
 auctions_bp = Blueprint("auctions", __name__)
+
+
+def _business_cycle_query():
+    return ChitCycle.query.join(ChitGroup, ChitCycle.group_id == ChitGroup.id).filter(
+        ChitCycle.deleted.is_(False),
+        ChitGroup.deleted.is_(False),
+        ChitGroup.business_id == current_user.business_id,
+    )
 
 
 @auctions_bp.route("/auctions")
@@ -15,11 +23,7 @@ auctions_bp = Blueprint("auctions", __name__)
 def index():
     if current_user.role == "Customer":
         abort(403)
-    cycles = (
-        ChitCycle.query.filter_by(deleted=False, business_id=current_user.business_id)
-        .order_by(ChitCycle.auction_date.asc())
-        .all()
-    )
+    cycles = _business_cycle_query().order_by(ChitCycle.auction_date.asc()).all()
     bid_form = AuctionBidForm()
     close_form = AuctionCloseForm()
     return render_template("auctions.html", cycles=cycles, bid_form=bid_form, close_form=close_form)
@@ -28,7 +32,7 @@ def index():
 @auctions_bp.route("/auctions/<int:cycle_id>/bid", methods=["POST"])
 @manager_required
 def place_bid(cycle_id):
-    cycle = ChitCycle.query.filter_by(id=cycle_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    cycle = _business_cycle_query().filter(ChitCycle.id == cycle_id).first_or_404()
     form = AuctionBidForm()
     memberships = [
         membership
@@ -65,7 +69,7 @@ def place_bid(cycle_id):
 @auctions_bp.route("/auctions/<int:cycle_id>/close", methods=["POST"])
 @manager_required
 def finalize(cycle_id):
-    cycle = ChitCycle.query.filter_by(id=cycle_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    cycle = _business_cycle_query().filter(ChitCycle.id == cycle_id).first_or_404()
     form = AuctionCloseForm()
     if form.validate_on_submit():
         winning_bid = close_auction(cycle, current_user.id)

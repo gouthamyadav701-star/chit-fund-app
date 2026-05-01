@@ -84,7 +84,12 @@ def dashboard():
 
     try:
         active_cycles = (
-            ChitCycle.query.filter_by(deleted=False, business_id=business_id)
+            ChitCycle.query.join(ChitGroup, ChitCycle.group_id == ChitGroup.id)
+            .filter(
+                ChitCycle.deleted.is_(False),
+                ChitGroup.deleted.is_(False),
+                ChitGroup.business_id == business_id,
+            )
             .order_by(ChitCycle.auction_date.asc())
             .all()
         )

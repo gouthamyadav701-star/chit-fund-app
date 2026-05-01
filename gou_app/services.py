@@ -54,10 +54,11 @@ def log_audit(actor_id: int | None, action: str, entity_type: str, entity_id: st
 
 def generate_installment_schedule(group: ChitGroup, actor_id: int | None = None) -> None:
     group.schedules.clear()
+    business_id = group.business_id or (group.business.id if group.business else None)
     for round_number in range(1, group.total_members + 1):
         due_date = group.start_date + relativedelta(months=round_number - 1)
         schedule = InstallmentSchedule(
-            business_id=group.business_id,
+            business_id=business_id,
             round_number=round_number,
             due_date=due_date,
             expected_amount=group.monthly_amount,
@@ -69,15 +70,17 @@ def generate_installment_schedule(group: ChitGroup, actor_id: int | None = None)
 
 def generate_group_cycles(group: ChitGroup, actor_id: int | None = None) -> None:
     group.cycles.clear()
+    business_id = group.business_id or (group.business.id if group.business else None)
+    current_round = int(group.current_round or 1)
     for cycle_number in range(1, group.total_members + 1):
         due_date = group.start_date + relativedelta(months=cycle_number - 1)
         auction_date = due_date + timedelta(days=max(group.auction_day - 1, 0))
         cycle = ChitCycle(
-            business_id=group.business_id,
+            business_id=business_id,
             cycle_number=cycle_number,
             due_date=due_date,
             auction_date=auction_date,
-            status="Open" if cycle_number == group.current_round else "Scheduled",
+            status="Open" if cycle_number == current_round else "Scheduled",
             expected_collection=Decimal(str(group.pool_value)),
             created_by=actor_id,
             updated_by=actor_id,
@@ -380,12 +383,15 @@ def build_dashboard_metrics():
     group_query = ChitGroup.query.filter_by(deleted=False)
     payment_query = Payment.query.filter_by(deleted=False)
     membership_query = GroupMembership.query.filter_by(deleted=False)
-    cycle_query = ChitCycle.query.filter_by(deleted=False)
+    cycle_query = ChitCycle.query.join(ChitGroup, ChitCycle.group_id == ChitGroup.id).filter(
+        ChitCycle.deleted.is_(False),
+        ChitGroup.deleted.is_(False),
+    )
     if business_id:
         group_query = group_query.filter_by(business_id=business_id)
         payment_query = payment_query.filter_by(business_id=business_id)
         membership_query = membership_query.filter_by(business_id=business_id)
-        cycle_query = cycle_query.filter_by(business_id=business_id)
+        cycle_query = cycle_query.filter(ChitGroup.business_id == business_id)
     groups = group_query.all()
     payments = payment_query.all()
     memberships = membership_query.all()

@@ -156,6 +156,7 @@ def create_group():
                 monthly_amount=form.monthly_amount.data,
                 total_members=int(form.total_members.data),
                 start_date=form.start_date.data,
+                current_round=1,
                 auction_day=form.auction_day.data,
                 created_by=current_user.id,
                 updated_by=current_user.id,
