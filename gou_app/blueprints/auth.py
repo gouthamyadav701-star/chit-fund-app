@@ -1,10 +1,11 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy import or_
 from werkzeug.security import check_password_hash
 
 from ..decorators import admin_required
 from ..extensions import bcrypt, db, limiter
-from ..forms import EmptyForm, LoginForm, RegisterForm
+from ..forms import EmptyForm, LoginForm, RecoverBusinessCodeForm, RegisterForm
 from ..models import Business, Member, User
 from ..tenant import generate_business_code, normalize_business_code
 
@@ -149,6 +150,46 @@ def login():
         return redirect(url_for("core.dashboard"))
 
     return render_template("login.html", form=form)
+
+
+@auth_bp.route("/forgot-business-code", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
+def forgot_business_code():
+    if current_user.is_authenticated:
+        return redirect(url_for("core.dashboard"))
+
+    form = RecoverBusinessCodeForm()
+    matches: list[Business] = []
+    submitted_identifier = ""
+
+    if form.validate_on_submit():
+        submitted_identifier = (form.identifier.data or "").strip()
+        lowered_identifier = submitted_identifier.lower()
+
+        users = User.query.filter(
+            User.deleted.is_(False),
+            or_(
+                User.username == submitted_identifier,
+                User.email == lowered_identifier,
+            ),
+        ).all()
+
+        phone_match_members = Member.query.filter_by(phone=submitted_identifier, deleted=False).all()
+        phone_member_ids = [member.id for member in phone_match_members]
+        if phone_member_ids:
+            customer_users = User.query.filter(
+                User.deleted.is_(False),
+                User.member_id.in_(phone_member_ids),
+            ).all()
+            users.extend(customer_users)
+
+        business_ids = sorted({user.business_id for user in users if user.business_id})
+        if business_ids:
+            matches = Business.query.filter(Business.id.in_(business_ids), Business.deleted.is_(False)).order_by(Business.name.asc()).all()
+        else:
+            flash("No business code found for that username, email, or phone number.", "warning")
+
+    return render_template("forgot_business_code.html", form=form, matches=matches, submitted_identifier=submitted_identifier)
 
 
 @auth_bp.route("/logout")

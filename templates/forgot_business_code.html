@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Find Business Code{% endblock %}
+{% block content %}
+<div class="auth-card wide">
+    <p class="eyebrow">Balaji Chit Funds</p>
+    <h2 class="auth-title">Find Business Code</h2>
+    <p class="auth-subtitle">Enter your username, email, or customer phone number. We will show the business codes linked to that account.</p>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <label>{{ form.identifier.label }}</label>
+        {{ form.identifier(placeholder="Enter username, email, or phone number") }}
+        {{ form.submit() }}
+    </form>
+
+    {% if matches %}
+    <div class="card" style="margin-top:18px; padding:18px;">
+        <h3 style="margin-top:0;">Matching Businesses</h3>
+        <p class="muted" style="margin-bottom:14px;">Found for <span class="mono">{{ submitted_identifier }}</span></p>
+        {% for business in matches %}
+        <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+            <strong>{{ business.name }}</strong><br>
+            <span class="muted">Business Code:</span> <span class="mono">{{ business.code }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <p class="auth-link"><a href="{{ url_for('auth.login') }}">Back to login</a></p>
+</div>
+{% endblock %}

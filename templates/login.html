@@ -15,6 +15,7 @@
         {{ form.password(placeholder="Enter password") }}
         {{ form.submit() }}
     </form>
+    <p class="auth-link"><a href="{{ url_for('auth.forgot_business_code') }}">Forgot business code?</a></p>
     <p class="auth-link"><a href="{{ url_for('auth.register') }}">Create a staff or customer account</a></p>
 </div>
 {% endblock %}

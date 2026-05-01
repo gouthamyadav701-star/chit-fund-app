@@ -98,6 +98,11 @@ class LoginForm(FlaskForm):
     submit = SubmitField("Login")
 
 
+class RecoverBusinessCodeForm(FlaskForm):
+    identifier = StringField("Username, Email, or Phone", validators=[DataRequired()])
+    submit = SubmitField("Find Business Code")
+
+
 class BusinessSettingsForm(FlaskForm):
     name = StringField("Business Name", validators=[DataRequired()])
     contact_phone = StringField(
