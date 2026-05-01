@@ -2,9 +2,9 @@
 {% block title %}Login{% endblock %}
 {% block content %}
 <div class="auth-card">
-    <p class="eyebrow">Balaji Chit Funds</p>
+    <div class="auth-brand-pill">Balaji Chit Funds</div>
     <h2 class="auth-title">Login</h2>
-    <p class="auth-subtitle">Enter your business code first. Staff can sign in with username, customers with phone number.</p>
+    <p class="auth-subtitle">Enter your business code first. Staff can sign in with username, and customers can sign in with their phone number.</p>
     <form method="post">
         {{ form.hidden_tag() }}
         <label>{{ form.business_code.label }}</label>
@@ -15,6 +15,11 @@
         {{ form.password(placeholder="Enter password") }}
         {{ form.submit() }}
     </form>
+    <div class="card compact" style="margin:18px 0 0; background:rgba(255,255,255,0.03);">
+        <p class="eyebrow">Quick Help</p>
+        <p class="section-note" style="margin-top:0;">Office users: business code + username + password.</p>
+        <p class="section-note">Customers: business code + registered phone number + password.</p>
+    </div>
     <p class="auth-link"><a href="{{ url_for('auth.forgot_business_code') }}">Forgot business code?</a></p>
     <p class="auth-link"><a href="{{ url_for('auth.register') }}">Create a staff or customer account</a></p>
 </div>

@@ -2,9 +2,35 @@
 {% block title %}Payment History{% endblock %}
 {% block topbar_title %}Payment History{% endblock %}
 {% block content %}
+{% set ns = namespace(total_amount=0, total_penalty=0) %}
+{% for payment in payments %}
+    {% set ns.total_amount = ns.total_amount + (payment.amount|float) %}
+    {% set ns.total_penalty = ns.total_penalty + (payment.penalty_amount|float) %}
+{% endfor %}
+<div class="grid" style="margin-bottom: 16px;">
+    <div class="card stat">
+        <h3>Total Records</h3>
+        <strong>{{ payments|length }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Total Amount</h3>
+        <strong class="mono">Rs {{ "%.2f"|format(ns.total_amount) }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Total Penalty</h3>
+        <strong class="mono">Rs {{ "%.2f"|format(ns.total_penalty) }}</strong>
+    </div>
+    <div class="card stat">
+        <h3>Scope</h3>
+        <strong>{{ "My Payments" if current_user.role == 'Customer' else "Office Ledger" }}</strong>
+    </div>
+</div>
 <div class="card">
     <div class="page-header">
-        <h2 style="margin:0;">Payment History</h2>
+        <div>
+            <h2 style="margin:0;">Payment History</h2>
+            <p class="section-note">Filter by member, group, status, or date and open receipts when needed.</p>
+        </div>
     </div>
     <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px;">
         {% if current_user.role != 'Customer' %}

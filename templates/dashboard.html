@@ -3,9 +3,20 @@
 {% block topbar_title %}Dashboard{% endblock %}
 {% block content %}
 {% if business %}
-<div class="card" style="margin-bottom:16px;">
-    <strong>{{ business.name }}</strong><br>
-    <span class="muted">Business Code: <span class="mono">{{ business.code }}</span></span>
+<div class="card elevated" style="margin-bottom:16px;">
+    <div class="page-header" style="margin-bottom:10px;">
+        <div>
+            <h1 style="margin:0;">{{ business.name }}</h1>
+            <p class="section-note">Run daily collections, group tracking, and customer records from one mobile-friendly dashboard.</p>
+        </div>
+        {% if current_user.role in ['Admin', 'Manager'] %}
+        <div class="actions">
+            <a class="button" href="{{ url_for('members.add_member') }}">Add Member</a>
+            <a class="button secondary" href="{{ url_for('members.create_group') }}">Create Group</a>
+        </div>
+        {% endif %}
+    </div>
+    <span class="business-chip">Business Code: <span class="mono">{{ business.code }}</span></span>
 </div>
 {% endif %}
 <style>
@@ -90,7 +101,10 @@
                 <button type="submit">Search</button>
             </form>
             <div class="page-header" style="margin-bottom: 14px;">
-                <h2 style="margin: 0;">Members</h2>
+                <div>
+                    <h2 style="margin: 0;">Members</h2>
+                    <p class="section-note">Tap any member to open their full account, history, and chit slots.</p>
+                </div>
                 <div class="actions">
                     {% if current_user.role in ['Admin', 'Manager'] %}
                     <a class="button secondary" href="{{ url_for('members.archived_members') }}">Archived Members</a>
@@ -144,7 +158,15 @@
         </div>
 
         <div class="card dashboard-panel" data-dashboard-panel="groups">
-            <h2 style="margin-top: 0;">Chit Groups</h2>
+            <div class="page-header" style="margin-bottom:14px;">
+                <div>
+                    <h2 style="margin:0;">Chit Groups</h2>
+                    <p class="section-note">Open any group to see current month, members, and winner history.</p>
+                </div>
+                <div class="actions">
+                    <a class="button secondary" href="{{ url_for('members.group_list') }}">View All Groups</a>
+                </div>
+            </div>
             <div class="table-wrap">
             <table>
                 <tr>

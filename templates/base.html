@@ -16,23 +16,27 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0d1017;
-            --bg2: #141927;
-            --bg3: #1a2233;
-            --panel: rgba(19, 24, 37, 0.92);
-            --line: rgba(173, 184, 204, 0.12);
-            --line-strong: rgba(173, 184, 204, 0.2);
-            --text: #e7edf8;
-            --muted: #98a7c2;
+            --bg: #07111a;
+            --bg2: #0e1a25;
+            --bg3: #152433;
+            --panel: rgba(16, 24, 36, 0.94);
+            --panel-soft: rgba(21, 33, 48, 0.9);
+            --line: rgba(173, 184, 204, 0.1);
+            --line-strong: rgba(173, 184, 204, 0.18);
+            --text: #edf4ff;
+            --muted: #93a6c1;
             --brand: #14b8a6;
             --brand-soft: rgba(20, 184, 166, 0.16);
             --brand-strong: #0f766e;
+            --brand-glow: rgba(20, 184, 166, 0.22);
             --info: #60a5fa;
             --success: #34d399;
             --warning: #fbbf24;
             --danger: #f87171;
             --shadow: 0 24px 55px rgba(0, 0, 0, 0.35);
-            --radius: 18px;
+            --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.18);
+            --radius: 20px;
+            --radius-sm: 14px;
         }
         * { box-sizing: border-box; }
         body {
@@ -40,9 +44,9 @@
             min-height: 100vh;
             font-family: "DM Sans", "Segoe UI", sans-serif;
             background:
-                radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 28%),
-                radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 24%),
-                linear-gradient(180deg, #0b0f16 0%, #0f1420 100%);
+                radial-gradient(circle at top left, rgba(20, 184, 166, 0.12), transparent 26%),
+                radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 22%),
+                linear-gradient(180deg, #081018 0%, #0d1722 100%);
             color: var(--text);
         }
         a { color: inherit; }
@@ -53,7 +57,7 @@
         }
         .sidebar {
             width: 250px;
-            background: rgba(10, 14, 22, 0.92);
+            background: rgba(8, 14, 22, 0.92);
             border-right: 1px solid var(--line);
             padding: 22px 16px 18px;
             position: sticky;
@@ -116,6 +120,9 @@
             background: var(--brand-soft);
             color: #d8fffb;
         }
+        .mobile-bottom-nav {
+            display: none;
+        }
         .nav-footer {
             margin-top: auto;
             padding-top: 16px;
@@ -138,19 +145,26 @@
         .main {
             flex: 1;
             min-width: 0;
+            position: relative;
         }
         .topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 16px;
-            padding: 22px 28px 14px;
+            padding: 18px 24px 12px;
         }
         .topbar-left {
             display: flex;
             align-items: center;
             gap: 14px;
             min-width: 0;
+        }
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
         }
         .mobile-menu-btn {
             display: none;
@@ -165,7 +179,7 @@
             flex-shrink: 0;
         }
         .topbar-title {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
             letter-spacing: -0.03em;
         }
@@ -174,17 +188,37 @@
             font-size: 12px;
             font-family: "DM Mono", monospace;
         }
+        .business-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
         .page {
-            padding: 0 28px 36px;
+            max-width: 1240px;
+            padding: 0 24px 36px;
         }
         .card {
             background: var(--panel);
             border: 1px solid var(--line);
             border-radius: var(--radius);
             padding: 22px;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-soft);
             backdrop-filter: blur(18px);
             margin-bottom: 18px;
+        }
+        .card.elevated {
+            background: linear-gradient(180deg, rgba(20, 28, 42, 0.98), rgba(14, 22, 33, 0.96));
+            box-shadow: var(--shadow);
+        }
+        .card.compact {
+            padding: 16px 18px;
         }
         .page-header {
             display: flex;
@@ -201,6 +235,11 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+        }
+        .section-note {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 14px;
         }
         .grid {
             display: grid;
@@ -233,14 +272,19 @@
         }
         .muted { color: var(--muted); }
         .mono { font-family: "DM Mono", monospace; }
-        .table-wrap { overflow-x: auto; }
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.02);
+        }
         table {
             width: 100%;
             border-collapse: collapse;
         }
         th, td {
             border-bottom: 1px solid var(--line);
-            padding: 12px 10px;
+            padding: 14px 12px;
             text-align: left;
             vertical-align: top;
         }
@@ -265,10 +309,10 @@
         }
         input, select, textarea {
             width: 100%;
-            padding: 11px 12px;
-            border-radius: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
             border: 1px solid var(--line);
-            background: rgba(13, 16, 23, 0.75);
+            background: rgba(9, 15, 24, 0.8);
             color: var(--text);
             margin-bottom: 14px;
             font: inherit;
@@ -286,8 +330,8 @@
             background: linear-gradient(135deg, var(--brand) 0%, #0f766e 100%);
             color: #041312;
             border: none;
-            border-radius: 12px;
-            padding: 10px 14px;
+            border-radius: 14px;
+            padding: 11px 15px;
             text-decoration: none;
             cursor: pointer;
             font-size: 14px;
@@ -368,9 +412,9 @@
         }
         .auth-card {
             width: min(460px, 100%);
-            background: rgba(13, 18, 28, 0.94);
+            background: linear-gradient(180deg, rgba(16, 23, 34, 0.98), rgba(11, 17, 26, 0.96));
             border: 1px solid var(--line);
-            border-radius: 22px;
+            border-radius: 28px;
             box-shadow: var(--shadow);
             padding: 34px 28px;
         }
@@ -381,6 +425,21 @@
             margin: 0 0 8px;
             font-size: 28px;
             letter-spacing: -0.04em;
+        }
+        .auth-brand-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: var(--brand-soft);
+            color: #d8fffb;
+            border: 1px solid rgba(20, 184, 166, 0.22);
+            margin-bottom: 14px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
         .auth-subtitle {
             margin: 0 0 24px;
@@ -439,14 +498,15 @@
                 background: rgba(11, 15, 22, 0.94);
                 backdrop-filter: blur(16px);
                 border-bottom: 1px solid var(--line);
-                padding-top: 14px;
-                padding-bottom: 14px;
+                padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+                padding-bottom: 12px;
             }
             .topbar-title {
                 font-size: 18px;
             }
             .page {
-                padding-top: 16px;
+                padding-top: 14px;
+                padding-bottom: 100px;
             }
             .split {
                 grid-template-columns: 1fr;
@@ -470,6 +530,11 @@
             .actions {
                 gap: 6px;
             }
+            .actions > .button,
+            .actions > a.button,
+            .actions > button {
+                flex: 1 1 auto;
+            }
             a.button, button, input[type="submit"], .button {
                 min-height: 40px;
                 padding: 9px 12px;
@@ -478,6 +543,46 @@
             .button.small, .btn-sm, button.btn-sm {
                 min-height: 34px;
                 padding: 6px 9px;
+            }
+            .topbar-right {
+                display: none;
+            }
+            .mobile-bottom-nav {
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 8px;
+                padding: 8px;
+                border-radius: 22px;
+                border: 1px solid var(--line);
+                background: rgba(8, 14, 22, 0.96);
+                backdrop-filter: blur(20px);
+                box-shadow: var(--shadow);
+                z-index: 45;
+            }
+            .mobile-bottom-link {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                min-height: 58px;
+                border-radius: 16px;
+                text-decoration: none;
+                color: var(--muted);
+                font-size: 11px;
+                font-weight: 700;
+            }
+            .mobile-bottom-link.active {
+                background: var(--brand-soft);
+                color: #d8fffb;
+            }
+            .mobile-bottom-icon {
+                font-size: 18px;
+                line-height: 1;
             }
         }
         @media (max-width: 640px) {
@@ -498,6 +603,9 @@
             .auth-card.wide {
                 padding: 28px 20px;
             }
+            .table-wrap {
+                border-radius: 14px;
+            }
         }
         @media (max-width: 520px) {
             .grid {
@@ -508,6 +616,10 @@
             }
             .sidebar {
                 width: min(88vw, 320px);
+            }
+            .mobile-bottom-nav {
+                left: 10px;
+                right: 10px;
             }
         }
     </style>
@@ -567,6 +679,11 @@
                     <div class="topbar-meta">{{ current_user.role }} · {{ current_user.username }}</div>
                     </div>
                 </div>
+                {% if active_business %}
+                <div class="topbar-right">
+                    <div class="business-chip">{{ active_business.name }} · {{ active_business.code }}</div>
+                </div>
+                {% endif %}
             </div>
             <div class="page">
                 <div id="install-banner" class="install-banner">
@@ -591,6 +708,45 @@
 
     {% if current_user.is_authenticated %}
             </div>
+            {% if current_user.role == 'Customer' %}
+            <nav class="mobile-bottom-nav">
+                <a class="mobile-bottom-link {% if request.endpoint == 'core.dashboard' %}active{% endif %}" href="{{ url_for('core.dashboard') }}">
+                    <span class="mobile-bottom-icon">⌂</span>
+                    <span>Home</span>
+                </a>
+                <a class="mobile-bottom-link {% if request.endpoint == 'payments.history' %}active{% endif %}" href="{{ url_for('payments.history') }}">
+                    <span class="mobile-bottom-icon">₹</span>
+                    <span>Payments</span>
+                </a>
+                <a class="mobile-bottom-link {% if request.endpoint == 'members.member_history_pdf' %}active{% endif %}" href="{{ url_for('members.member_history_pdf', member_id=current_user.member_id) if current_user.member_id else '#' }}">
+                    <span class="mobile-bottom-icon">⇩</span>
+                    <span>PDF</span>
+                </a>
+                <a class="mobile-bottom-link" href="{{ url_for('auth.logout') }}">
+                    <span class="mobile-bottom-icon">⎋</span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+            {% else %}
+            <nav class="mobile-bottom-nav">
+                <a class="mobile-bottom-link {% if request.endpoint == 'core.dashboard' %}active{% endif %}" href="{{ url_for('core.dashboard') }}">
+                    <span class="mobile-bottom-icon">⌂</span>
+                    <span>Home</span>
+                </a>
+                <a class="mobile-bottom-link {% if request.endpoint in member_nav_endpoints %}active{% endif %}" href="{{ url_for('members.add_member') }}">
+                    <span class="mobile-bottom-icon">☺</span>
+                    <span>Members</span>
+                </a>
+                <a class="mobile-bottom-link {% if request.endpoint in group_nav_endpoints %}active{% endif %}" href="{{ url_for('members.group_list') }}">
+                    <span class="mobile-bottom-icon">◫</span>
+                    <span>Groups</span>
+                </a>
+                <a class="mobile-bottom-link {% if request.endpoint == 'payments.history' %}active{% endif %}" href="{{ url_for('payments.history') }}">
+                    <span class="mobile-bottom-icon">₹</span>
+                    <span>Payments</span>
+                </a>
+            </nav>
+            {% endif %}
         </main>
     </div>
     {% else %}

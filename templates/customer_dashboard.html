@@ -3,17 +3,21 @@
 {% block topbar_title %}My Account{% endblock %}
 {% block content %}
 {% if business %}
-<div class="card" style="margin-bottom: 18px;">
-    <strong>{{ business.name }}</strong><br>
-    <span class="muted">Business Code: <span class="mono">{{ business.code }}</span></span>
+<div class="card elevated" style="margin-bottom: 18px;">
+    <div class="page-header" style="margin-bottom:10px;">
+        <div>
+            <h1 style="margin:0;">{{ member.name if member else 'My Account' }}</h1>
+            <p class="section-note">A simple view of your chit payments, active slots, and winning history.</p>
+        </div>
+        <div class="actions">
+            <a class="button secondary" href="{{ url_for('payments.history') }}">My Payments</a>
+        </div>
+    </div>
+    <span class="business-chip">{{ business.name }} · <span class="mono">{{ business.code }}</span></span>
 </div>
 {% endif %}
 {% if member %}
 <div class="grid" style="margin-bottom: 18px;">
-    <div class="card stat">
-        <h3>My Name</h3>
-        <strong style="font-size:24px;">{{ member.name }}</strong>
-    </div>
     <div class="card stat">
         <h3>Total Paid</h3>
         <strong class="mono">Rs {{ "%.2f"|format(member.paid_amount) }}</strong>
@@ -32,10 +36,9 @@
     <div class="page-header">
         <div>
             <h2 style="margin:0;">My Chit Summary</h2>
-            <p class="muted" style="margin:8px 0 0;">Only your own memberships, payments, and winning history are shown here.</p>
+            <p class="section-note">Only your own memberships, payments, and winning history are shown here.</p>
         </div>
         <div class="actions">
-            <a class="button secondary" href="{{ url_for('payments.history') }}">My Payments</a>
             <a class="button secondary" href="{{ url_for('members.member_history_pdf', member_id=member.id) }}">Download PDF</a>
         </div>
     </div>
@@ -61,6 +64,7 @@
 
 <div class="card">
     <h2 style="margin-top: 0;">My Chit Slots</h2>
+    <p class="section-note">This section shows your current slot, share type, monthly due, and outstanding amount.</p>
     <div class="table-wrap">
         <table>
             <tr>
@@ -89,6 +93,7 @@
 
 <div class="card">
     <h2 style="margin-top: 0;">Recent Payments</h2>
+    <p class="section-note">Open receipts anytime from here.</p>
     <div class="table-wrap">
         <table>
             <tr>
@@ -117,6 +122,7 @@
 
 <div class="card">
     <h2 style="margin-top: 0;">Winning History</h2>
+    <p class="section-note">If you have already won a cycle, the final payout appears here.</p>
     <div class="table-wrap">
         <table>
             <tr>

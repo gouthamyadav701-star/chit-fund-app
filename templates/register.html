@@ -2,7 +2,7 @@
 {% block title %}Register{% endblock %}
 {% block content %}
 <div class="auth-card wide">
-    <p class="eyebrow">Balaji Chit Funds</p>
+    <div class="auth-brand-pill">Balaji Chit Funds</div>
     <h2 class="auth-title">Create Account</h2>
     <p class="auth-subtitle">Create a new chit-fund business, join an existing business as staff, or register as a customer.</p>
     <form method="post">
@@ -31,6 +31,11 @@
         {{ form.confirm_password(placeholder="Confirm password") }}
         {{ form.submit() }}
     </form>
+    <div class="card compact" style="margin:18px 0 0; background:rgba(255,255,255,0.03);">
+        <p class="eyebrow">Best Flow</p>
+        <p class="section-note" style="margin-top:0;">New office: leave business code empty and enter business name.</p>
+        <p class="section-note">Existing office: enter business code first, then continue.</p>
+    </div>
     <p class="auth-link"><a href="{{ url_for('auth.login') }}">Back to login</a></p>
 </div>
 <script>
