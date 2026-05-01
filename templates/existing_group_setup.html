@@ -36,6 +36,9 @@
     <div class="flash info" style="margin-top: 14px;">
         Use this once for already-running chit groups. Enter total paid till today, months already paid, pending due, penalty balance, and any past winning month details. After saving, the app will continue from the selected current month.
     </div>
+    <div class="flash info" style="margin-top: 14px;">
+        Auto calculation is enabled. When you enter `Months Paid`, the app auto-fills `Total Paid Till Today` and `Pending Due`. If a member already won and you enter `Won Cycle`, the payout box auto-fills with that slot's eligible prize amount until you manually change it.
+    </div>
 </div>
 
 <div class="card">
@@ -43,7 +46,7 @@
         {{ form.hidden_tag() }}
         <div style="max-width: 320px;">
             <label>{{ form.current_round.label }}</label>
-            {{ form.current_round(min="1", max=group.total_members) }}
+            {{ form.current_round(min="1", max=group.total_members, id="current-round-field") }}
         </div>
 
         <div class="table-wrap">
@@ -52,6 +55,7 @@
                     <th>Member</th>
                     <th>Slot</th>
                     <th>Share</th>
+                    <th>Monthly Due</th>
                     <th>Total Paid Till Today</th>
                     <th>Months Paid</th>
                     <th>Pending Due</th>
@@ -61,23 +65,29 @@
                     <th>Payout Amount</th>
                 </tr>
                 {% for membership in memberships %}
-                <tr>
+                <tr
+                    class="existing-setup-row"
+                    data-membership-id="{{ membership.id }}"
+                    data-expected-amount="{{ "%.2f"|format(membership.expected_amount) }}"
+                    data-eligible-prize="{{ "%.2f"|format(membership.eligible_prize_amount) }}"
+                >
                     <td>
                         <strong>{{ membership.member.name }}</strong><br>
                         <span class="muted">{{ membership.group.name }}</span>
                     </td>
                     <td>{{ membership.slot_number }}</td>
                     <td>{{ membership.share_label }}</td>
-                    <td><input type="number" step="0.01" min="0" name="opening_paid_{{ membership.id }}" value="0"></td>
-                    <td><input type="number" min="0" max="{{ group.total_members }}" name="months_paid_{{ membership.id }}" value="0"></td>
-                    <td><input type="number" step="0.01" min="0" name="arrears_{{ membership.id }}" value="{{ "%.2f"|format(membership.arrears_balance or 0) }}"></td>
+                    <td class="mono">Rs {{ "%.2f"|format(membership.expected_amount) }}</td>
+                    <td><input type="number" step="0.01" min="0" name="opening_paid_{{ membership.id }}" value="0" data-auto-field="opening-paid"></td>
+                    <td><input type="number" min="0" max="{{ group.total_members }}" name="months_paid_{{ membership.id }}" value="0" data-auto-field="months-paid"></td>
+                    <td><input type="number" step="0.01" min="0" name="arrears_{{ membership.id }}" value="{{ "%.2f"|format(membership.arrears_balance or 0) }}" data-auto-field="arrears"></td>
                     <td><input type="number" step="0.01" min="0" name="penalty_{{ membership.id }}" value="{{ "%.2f"|format(membership.penalty_balance or 0) }}"></td>
                     <td><input type="number" step="0.01" min="0" name="dividend_{{ membership.id }}" value="{{ "%.2f"|format(membership.total_dividend or 0) }}"></td>
-                    <td><input type="number" min="0" max="{{ group.total_members }}" name="won_cycle_{{ membership.id }}" value="0"></td>
-                    <td><input type="number" step="0.01" min="0" name="payout_{{ membership.id }}" value="0"></td>
+                    <td><input type="number" min="0" max="{{ group.total_members }}" name="won_cycle_{{ membership.id }}" value="0" data-auto-field="won-cycle"></td>
+                    <td><input type="number" step="0.01" min="0" name="payout_{{ membership.id }}" value="0" data-auto-field="payout"></td>
                 </tr>
                 {% else %}
-                <tr><td colspan="10">Add active members to this group first, then come back for existing setup.</td></tr>
+                <tr><td colspan="11">Add active members to this group first, then come back for existing setup.</td></tr>
                 {% endfor %}
             </table>
         </div>
@@ -88,4 +98,92 @@
         </div>
     </form>
 </div>
+<script>
+    (function () {
+        const currentRoundField = document.getElementById("current-round-field");
+        const rows = Array.from(document.querySelectorAll(".existing-setup-row"));
+
+        function toNumber(value) {
+            const parsed = Number(value || 0);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function formatMoney(value) {
+            return toNumber(value).toFixed(2);
+        }
+
+        function markManual(input) {
+            if (input) {
+                input.dataset.manual = "true";
+            }
+        }
+
+        function updateRow(row) {
+            const expectedAmount = toNumber(row.dataset.expectedAmount);
+            const eligiblePrize = toNumber(row.dataset.eligiblePrize);
+            const monthsPaidField = row.querySelector('[data-auto-field="months-paid"]');
+            const openingPaidField = row.querySelector('[data-auto-field="opening-paid"]');
+            const arrearsField = row.querySelector('[data-auto-field="arrears"]');
+            const wonCycleField = row.querySelector('[data-auto-field="won-cycle"]');
+            const payoutField = row.querySelector('[data-auto-field="payout"]');
+
+            const currentRound = Math.max(toNumber(currentRoundField ? currentRoundField.value : 1), 1);
+            const completedMonths = Math.max(currentRound - 1, 0);
+            const monthsPaid = Math.max(toNumber(monthsPaidField ? monthsPaidField.value : 0), 0);
+            const pendingMonths = Math.max(completedMonths - monthsPaid, 0);
+
+            if (openingPaidField && openingPaidField.dataset.manual !== "true") {
+                openingPaidField.value = formatMoney(monthsPaid * expectedAmount);
+            }
+            if (arrearsField && arrearsField.dataset.manual !== "true") {
+                arrearsField.value = formatMoney(pendingMonths * expectedAmount);
+            }
+            if (wonCycleField && payoutField && payoutField.dataset.manual !== "true") {
+                payoutField.value = toNumber(wonCycleField.value) > 0 ? formatMoney(eligiblePrize) : "0.00";
+            }
+        }
+
+        rows.forEach((row) => {
+            const monthsPaidField = row.querySelector('[data-auto-field="months-paid"]');
+            const openingPaidField = row.querySelector('[data-auto-field="opening-paid"]');
+            const arrearsField = row.querySelector('[data-auto-field="arrears"]');
+            const wonCycleField = row.querySelector('[data-auto-field="won-cycle"]');
+            const payoutField = row.querySelector('[data-auto-field="payout"]');
+
+            if (monthsPaidField) {
+                monthsPaidField.addEventListener("input", function () {
+                    updateRow(row);
+                });
+            }
+            if (openingPaidField) {
+                openingPaidField.addEventListener("input", function () {
+                    markManual(openingPaidField);
+                });
+            }
+            if (arrearsField) {
+                arrearsField.addEventListener("input", function () {
+                    markManual(arrearsField);
+                });
+            }
+            if (wonCycleField) {
+                wonCycleField.addEventListener("input", function () {
+                    updateRow(row);
+                });
+            }
+            if (payoutField) {
+                payoutField.addEventListener("input", function () {
+                    markManual(payoutField);
+                });
+            }
+
+            updateRow(row);
+        });
+
+        if (currentRoundField) {
+            currentRoundField.addEventListener("input", function () {
+                rows.forEach(updateRow);
+            });
+        }
+    })();
+</script>
 {% endblock %}
