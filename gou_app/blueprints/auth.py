@@ -85,7 +85,7 @@ def register():
                     db.session.flush()
                     role = "Admin"
                     is_approved = True
-                    success_message = f"Business created. Your business code is {business.code}. Please log in."
+                    success_message = None
 
                 new_user = User(
                     business_id=business.id,
@@ -98,6 +98,12 @@ def register():
 
             db.session.add(new_user)
             db.session.commit()
+            if form.account_type.data == "Staff" and not business_code:
+                return render_template(
+                    "business_created.html",
+                    business=business,
+                    username=new_user.username,
+                )
             flash(success_message, "success")
             return redirect(url_for("auth.login"))
         except Exception:

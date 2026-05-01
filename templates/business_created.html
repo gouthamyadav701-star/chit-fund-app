@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Business Created{% endblock %}
+{% block content %}
+<div class="auth-card wide">
+    <p class="eyebrow">Balaji Chit Funds</p>
+    <h2 class="auth-title">Business Created</h2>
+    <p class="auth-subtitle">Your new chit-fund business is ready. Save this business code now and share it only with your staff or customers who need access.</p>
+
+    <div class="card" style="margin: 18px 0 0; padding: 20px;">
+        <div style="margin-bottom: 12px;">
+            <span class="muted">Business Name</span><br>
+            <strong style="font-size: 22px;">{{ business.name }}</strong>
+        </div>
+        <div style="margin-bottom: 12px;">
+            <span class="muted">Business Code</span><br>
+            <div class="metric mono" id="business-code-value" style="font-size: 26px;">{{ business.code }}</div>
+        </div>
+        <div style="margin-bottom: 18px;">
+            <span class="muted">Admin Username</span><br>
+            <strong class="mono">{{ username }}</strong>
+        </div>
+        <div class="actions">
+            <button type="button" id="copy-business-code-btn">Copy Business Code</button>
+            <a class="button secondary" href="{{ url_for('auth.login') }}">Go to Login</a>
+        </div>
+    </div>
+
+    <p class="auth-link" id="copy-business-code-status">Keep this code safe. You will need it for login and for adding staff/customers.</p>
+</div>
+<script>
+    (function () {
+        const codeEl = document.getElementById("business-code-value");
+        const button = document.getElementById("copy-business-code-btn");
+        const status = document.getElementById("copy-business-code-status");
+
+        if (!codeEl || !button || !status) {
+            return;
+        }
+
+        button.addEventListener("click", async function () {
+            try {
+                await navigator.clipboard.writeText(codeEl.textContent.trim());
+                status.textContent = "Business code copied. Now you can log in and continue setup.";
+            } catch (_error) {
+                status.textContent = "Copy failed. Please note down the business code manually.";
+            }
+        });
+    })();
+</script>
+{% endblock %}
