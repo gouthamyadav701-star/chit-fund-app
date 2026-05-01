@@ -191,6 +191,7 @@ class GroupMembership(db.Model, AuditMixin):
     share_units = db.Column(db.Numeric(4, 2), nullable=False, default=Decimal("1.00"))
     total_dividend = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("0.00"))
     penalty_balance = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("0.00"))
+    arrears_balance = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("0.00"))
 
     business = db.relationship("Business", lazy="select")
     member = db.relationship("Member", back_populates="memberships")
@@ -249,11 +250,13 @@ class GroupMembership(db.Model, AuditMixin):
 
     @property
     def outstanding_amount(self) -> float:
-        outstanding = max(self.expected_amount - self.current_cycle_paid_amount, 0)
+        outstanding = max(self.expected_amount - self.current_cycle_paid_amount, 0) + float(self.arrears_balance or 0)
         return round(outstanding, 2)
 
     @property
     def is_overdue(self) -> bool:
+        if float(self.arrears_balance or 0) > 0:
+            return True
         cycle = self.current_cycle
         if not cycle or not cycle.due_date:
             return False

@@ -135,12 +135,81 @@ def compute_penalty(outstanding_amount: float, due_date) -> float:
     return round(outstanding_amount * (rate / 100) * months_late, 2)
 
 
+def recalculate_member_financials(member: Member) -> None:
+    active_memberships = [
+        membership
+        for membership in member.memberships
+        if not membership.deleted and membership.status == "Active" and membership.group and not membership.group.deleted
+    ]
+    total_contract_value = sum(
+        float(membership.group.monthly_amount) * float(membership.share_units) * membership.group.total_members
+        for membership in active_memberships
+    )
+    total_paid = sum(float(payment.amount) for payment in member.payments if not payment.deleted)
+    member.total_amount = round(total_contract_value, 2)
+    member.paid_amount = round(total_paid, 2)
+
+
+def create_opening_balance_payment(
+    member: Member,
+    membership: GroupMembership,
+    amount: float,
+    actor_id: int | None = None,
+) -> Payment:
+    payment = Payment(
+        business_id=membership.business_id,
+        member=member,
+        group=membership.group,
+        membership=membership,
+        cycle=None,
+        amount=amount,
+        expected_amount=amount,
+        penalty_amount=0,
+        status="Opening",
+        due_date=None,
+        created_by=actor_id,
+        updated_by=actor_id,
+    )
+    db.session.add(payment)
+    db.session.flush()
+
+    db.session.add(
+        LedgerEntry(
+            business_id=membership.business_id,
+            group=membership.group,
+            member=member,
+            membership=membership,
+            cycle=None,
+            payment=payment,
+            entry_type="OpeningBalance",
+            amount=amount,
+            description=f"Opening balance imported for {membership.group.name}",
+            created_by=actor_id,
+            updated_by=actor_id,
+        )
+    )
+    log_audit(
+        actor_id,
+        "payment.opening_balance_created",
+        "Payment",
+        payment.id,
+        {"amount": amount, "member": member.name, "group": membership.group.name},
+    )
+    return payment
+
+
 def create_payment(member: Member, membership: GroupMembership, amount: float, actor_id: int | None = None) -> Payment:
     cycle = membership.current_cycle
     due_date = cycle.due_date if cycle else None
-    expected_amount = membership.expected_amount
-    penalty_amount = compute_penalty(max(expected_amount - membership.current_cycle_paid_amount, 0), due_date)
-    status = "Paid" if amount >= expected_amount else "Partial"
+    current_cycle_due = max(membership.expected_amount - membership.current_cycle_paid_amount, 0)
+    arrears_before = float(membership.arrears_balance or 0)
+    expected_amount = round(current_cycle_due + arrears_before, 2)
+    penalty_amount = compute_penalty(max(current_cycle_due, 0), due_date)
+    applied_to_arrears = min(amount, arrears_before)
+    remaining_after_arrears = max(amount - applied_to_arrears, 0)
+    membership.arrears_balance = round(max(arrears_before - applied_to_arrears, 0), 2)
+    current_cycle_paid_component = min(remaining_after_arrears, current_cycle_due)
+    status = "Paid" if membership.arrears_balance <= 0 and remaining_after_arrears >= current_cycle_due else "Partial"
     payment = Payment(
         business_id=membership.business_id,
         member=member,
@@ -155,10 +224,9 @@ def create_payment(member: Member, membership: GroupMembership, amount: float, a
         created_by=actor_id,
         updated_by=actor_id,
     )
-    member.paid_amount = round(float(member.paid_amount) + amount, 2)
     membership.penalty_balance = round(float(membership.penalty_balance) + penalty_amount, 2)
     if cycle:
-        cycle.collected_amount = round(float(cycle.collected_amount) + amount, 2)
+        cycle.collected_amount = round(float(cycle.collected_amount) + current_cycle_paid_component, 2)
         cycle.penalty_total = round(float(cycle.penalty_total) + penalty_amount, 2)
 
     db.session.add(payment)
@@ -196,6 +264,7 @@ def create_payment(member: Member, membership: GroupMembership, amount: float, a
             )
         )
 
+    recalculate_member_financials(member)
     log_audit(actor_id, "payment.created", "Payment", payment.id, {"amount": amount, "member": member.name})
     return payment
 

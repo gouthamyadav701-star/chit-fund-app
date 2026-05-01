@@ -81,6 +81,10 @@ def ensure_runtime_schema(app: Flask) -> None:
                 statements.append(
                     "ALTER TABLE group_membership ADD COLUMN slot_number INTEGER NOT NULL DEFAULT 1"
                 )
+            if "arrears_balance" not in membership_columns:
+                statements.append(
+                    "ALTER TABLE group_membership ADD COLUMN arrears_balance NUMERIC(10, 2) NOT NULL DEFAULT 0"
+                )
 
         member_columns = columns_for("member")
         if member_columns and "business_id" not in member_columns:

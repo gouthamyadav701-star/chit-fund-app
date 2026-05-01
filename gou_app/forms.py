@@ -171,6 +171,11 @@ class ChitGroupForm(FlaskForm):
     submit = SubmitField("Create Group")
 
 
+class ExistingGroupSetupForm(FlaskForm):
+    current_round = IntegerField("Current Running Month / Cycle", validators=[DataRequired(), NumberRange(min=1)])
+    submit = SubmitField("Save Existing Group Setup")
+
+
 class RoundForm(FlaskForm):
     next_round = HiddenField("Next Round", validators=[DataRequired()])
     submit = SubmitField("Advance Round")

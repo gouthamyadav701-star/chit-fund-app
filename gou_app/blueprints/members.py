@@ -1,21 +1,24 @@
 from datetime import UTC, datetime
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, send_file, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from ..decorators import manager_required
 from ..extensions import db
-from ..forms import ChitGroupForm, EmptyForm, MemberForm, MembershipForm, RoundForm
+from ..forms import ChitGroupForm, EmptyForm, ExistingGroupSetupForm, MemberForm, MembershipForm, RoundForm
 from ..models import ChitGroup, GroupMembership, Member
 from ..services import (
+    assign_cycle_winner,
     archive_group_data,
     build_member_history_pdf,
+    create_opening_balance_payment,
     email_group_archive,
     ensure_group_completion_dates,
     enroll_member_in_group,
     generate_group_cycles,
     generate_installment_schedule,
     log_audit,
+    recalculate_member_financials,
 )
 
 members_bp = Blueprint("members", __name__)
@@ -209,6 +212,119 @@ def edit_group(group_id):
             flash("Group could not be updated.", "danger")
 
     return render_template("group_form.html", form=form, is_edit=True, group=group)
+
+
+@members_bp.route("/groups/<int:group_id>/existing-setup", methods=["GET", "POST"])
+@manager_required
+def existing_group_setup(group_id):
+    group = ChitGroup.query.filter_by(id=group_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    memberships = sorted(
+        [membership for membership in group.memberships if not membership.deleted and membership.status == "Active"],
+        key=lambda item: (item.member.name.lower(), item.slot_number),
+    )
+    form = ExistingGroupSetupForm()
+    if not form.is_submitted():
+        form.current_round.data = group.current_round
+
+    has_live_activity = any(
+        not payment.deleted and payment.status != "Opening" for payment in group.payments
+    ) or any(any(not bid.deleted for bid in cycle.bids) for cycle in group.cycles)
+
+    if form.validate_on_submit():
+        if has_live_activity:
+            flash(
+                "Existing group setup is only allowed before normal live payments or auction entries begin for this group.",
+                "warning",
+            )
+            return render_template(
+                "existing_group_setup.html",
+                form=form,
+                group=group,
+                memberships=memberships,
+                has_live_activity=has_live_activity,
+            )
+
+        try:
+            current_round = min(max(int(form.current_round.data), 1), group.total_members)
+
+            for payment in group.payments:
+                if not payment.deleted and payment.status == "Opening":
+                    payment.deleted = True
+                    payment.updated_by = current_user.id
+
+            for cycle in group.cycles:
+                cycle.winner_membership = None
+                cycle.winning_bid_amount = None
+                cycle.discount_amount = 0
+                cycle.dividend_per_member = 0
+                cycle.collected_amount = 0
+                cycle.penalty_total = 0
+                cycle.updated_by = current_user.id
+                cycle.status = "Closed" if cycle.cycle_number < current_round else "Scheduled"
+                if cycle.cycle_number == current_round:
+                    cycle.status = "Open"
+                for bid in cycle.bids:
+                    bid.deleted = True
+                    bid.updated_by = current_user.id
+
+            touched_members: dict[int, Member] = {}
+            manual_dividends: dict[int, float] = {}
+            for membership in memberships:
+                touched_members[membership.member.id] = membership.member
+                opening_paid = float((request.form.get(f"opening_paid_{membership.id}") or "0").strip() or 0)
+                months_paid = int((request.form.get(f"months_paid_{membership.id}") or "0").strip() or 0)
+                arrears = float((request.form.get(f"arrears_{membership.id}") or "0").strip() or 0)
+                penalty = float((request.form.get(f"penalty_{membership.id}") or "0").strip() or 0)
+                dividend = float((request.form.get(f"dividend_{membership.id}") or "0").strip() or 0)
+                won_cycle_number = int((request.form.get(f"won_cycle_{membership.id}") or "0").strip() or 0)
+                payout_amount = float((request.form.get(f"payout_{membership.id}") or "0").strip() or 0)
+
+                if opening_paid <= 0 and months_paid > 0:
+                    opening_paid = round(months_paid * membership.expected_amount, 2)
+
+                membership.arrears_balance = round(max(arrears, 0), 2)
+                membership.penalty_balance = round(max(penalty, 0), 2)
+                membership.updated_by = current_user.id
+                manual_dividends[membership.id] = round(max(dividend, 0), 2)
+
+                if opening_paid > 0:
+                    create_opening_balance_payment(membership.member, membership, round(opening_paid, 2), current_user.id)
+
+                if won_cycle_number > 0:
+                    cycle = next((item for item in group.cycles if item.cycle_number == won_cycle_number), None)
+                    if cycle and cycle.cycle_number < current_round and payout_amount > 0:
+                        assign_cycle_winner(cycle, membership, round(payout_amount, 2), current_user.id, note="Imported opening setup")
+
+            for membership in memberships:
+                if manual_dividends.get(membership.id, 0) > 0:
+                    membership.total_dividend = manual_dividends[membership.id]
+
+            group.current_round = current_round
+            group.completed_on = None
+            group.retention_expires_on = None
+            group.archive_export_sent_on = None
+            group.archived_on = None
+            group.updated_by = current_user.id
+
+            for member in touched_members.values():
+                recalculate_member_financials(member)
+
+            log_audit(current_user.id, "group.opening_setup_saved", "ChitGroup", group.id, {"round": group.current_round})
+            db.session.commit()
+            flash(f"Existing group setup saved for {group.name}. You can continue from month {group.current_round}.", "success")
+            return redirect(url_for("core.dashboard"))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Existing group setup failed for %s", group.id)
+            flash("Existing group setup could not be saved.", "danger")
+
+    return render_template(
+        "existing_group_setup.html",
+        form=form,
+        group=group,
+        memberships=memberships,
+        has_live_activity=has_live_activity,
+    )
 
 
 @members_bp.route("/groups/<int:group_id>/advance", methods=["POST"])

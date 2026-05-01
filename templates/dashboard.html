@@ -171,6 +171,7 @@
                     <td>
                         {% if current_user.role in ['Admin', 'Manager'] %}
                         <a class="button secondary" href="{{ url_for('members.edit_group', group_id=group.id) }}">Edit</a>
+                        <a class="button secondary" href="{{ url_for('members.existing_group_setup', group_id=group.id) }}">Existing Setup</a>
                         {% if group.completed_on %}
                         <form class="inline" method="post" action="{{ url_for('members.archive_group', group_id=group.id) }}">
                             {{ action_form.hidden_tag() }}
