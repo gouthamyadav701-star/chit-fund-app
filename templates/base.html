@@ -517,6 +517,8 @@
     <div class="layout">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
         <aside class="sidebar">
+            {% set member_nav_endpoints = ['members.add_member', 'members.edit_member', 'members.member_detail', 'members.add_membership', 'members.member_history_pdf'] %}
+            {% set group_nav_endpoints = ['members.group_list', 'members.group_detail', 'members.create_group', 'members.edit_group', 'members.existing_group_setup'] %}
             <div class="brand-block">
                 {% if active_business and active_business.logo_url %}
                 <img class="brand-logo" src="{{ active_business.logo_url }}" alt="{{ active_business.name }} logo">
@@ -534,7 +536,8 @@
             <a class="nav-link {% if request.endpoint == 'members.member_history_pdf' %}active{% endif %}" href="{{ url_for('members.member_history_pdf', member_id=current_user.member_id) if current_user.member_id else '#' }}">My PDF</a>
             {% else %}
             <div class="nav-section">Operations</div>
-            <a class="nav-link {% if 'members' in request.endpoint %}active{% endif %}" href="{{ url_for('members.add_member') }}">Members</a>
+            <a class="nav-link {% if request.endpoint in member_nav_endpoints %}active{% endif %}" href="{{ url_for('members.add_member') }}">Members</a>
+            <a class="nav-link {% if request.endpoint in group_nav_endpoints %}active{% endif %}" href="{{ url_for('members.group_list') }}">Groups</a>
             <a class="nav-link {% if request.endpoint == 'payments.history' %}active{% endif %}" href="{{ url_for('payments.history') }}">Payments</a>
             <a class="nav-link {% if 'auctions' in request.endpoint %}active{% endif %}" href="{{ url_for('auctions.index') }}">Auctions</a>
 

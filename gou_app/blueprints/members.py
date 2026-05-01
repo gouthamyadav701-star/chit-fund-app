@@ -24,6 +24,11 @@ from ..services import (
 members_bp = Blueprint("members", __name__)
 
 
+def _ensure_staff_access():
+    if current_user.role == "Customer":
+        abort(403)
+
+
 @members_bp.route("/members/add", methods=["GET", "POST"])
 @manager_required
 def add_member():
@@ -167,6 +172,45 @@ def create_group():
             flash("Group could not be created.", "danger")
 
     return render_template("group_form.html", form=form)
+
+
+@members_bp.route("/groups/list")
+@login_required
+def group_list():
+    _ensure_staff_access()
+    groups = (
+        ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id)
+        .order_by(ChitGroup.name, ChitGroup.start_date)
+        .all()
+    )
+    return render_template("group_list.html", groups=groups)
+
+
+@members_bp.route("/groups/<int:group_id>")
+@login_required
+def group_detail(group_id):
+    _ensure_staff_access()
+    group = ChitGroup.query.filter_by(id=group_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    memberships = sorted(
+        [membership for membership in group.memberships if not membership.deleted],
+        key=lambda item: (item.status != "Active", item.slot_number, item.member.name.lower()),
+    )
+    current_cycle = next(
+        (cycle for cycle in group.cycles if not cycle.deleted and cycle.cycle_number == group.current_round),
+        None,
+    )
+    winner_cycles = [
+        cycle
+        for cycle in group.cycles
+        if not cycle.deleted and cycle.status == "Closed" and cycle.winner_membership and cycle.winner_membership.member
+    ]
+    return render_template(
+        "group_detail.html",
+        group=group,
+        memberships=memberships,
+        current_cycle=current_cycle,
+        winner_cycles=winner_cycles,
+    )
 
 
 @members_bp.route("/groups/<int:group_id>/edit", methods=["GET", "POST"])

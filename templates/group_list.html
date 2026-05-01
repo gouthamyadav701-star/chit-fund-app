@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Groups{% endblock %}
+{% block topbar_title %}Groups{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 style="margin:0;">All Chit Groups</h1>
+            <p class="muted" style="margin:8px 0 0;">Open any group to see members, current running month, and winner history.</p>
+        </div>
+        {% if current_user.role in ['Admin', 'Manager'] %}
+        <div class="actions">
+            <a class="button" href="{{ url_for('members.create_group') }}">Create Group</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Group</th>
+                <th>Monthly</th>
+                <th>Pool Value</th>
+                <th>Running Month</th>
+                <th>Active Slots</th>
+                <th>Next Due</th>
+                <th>Next Auction</th>
+                <th>Actions</th>
+            </tr>
+            {% for group in groups %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('members.group_detail', group_id=group.id) }}" style="text-decoration:none;color:#d9fff7;">
+                        <strong>{{ group.name }}</strong>
+                    </a><br>
+                    <span class="muted">Started {{ group.start_date.strftime('%d-%m-%Y') }}</span>
+                </td>
+                <td class="mono">Rs {{ "%.2f"|format(group.monthly_amount) }}</td>
+                <td class="mono">Rs {{ "%.2f"|format(group.pool_value) }}</td>
+                <td>{{ group.current_round }} / {{ group.total_members }}</td>
+                <td>{{ group.active_membership_count }}</td>
+                <td>{{ group.current_due_date.strftime('%d-%m-%Y') if group.current_due_date else '-' }}</td>
+                <td>{{ group.next_auction_date.strftime('%d-%m-%Y') if group.next_auction_date else '-' }}</td>
+                <td>
+                    <div class="actions">
+                        <a class="button secondary small" href="{{ url_for('members.group_detail', group_id=group.id) }}">Open</a>
+                        {% if current_user.role in ['Admin', 'Manager'] %}
+                        <a class="button secondary small" href="{{ url_for('members.edit_group', group_id=group.id) }}">Edit</a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8">No groups created yet.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endblock %}

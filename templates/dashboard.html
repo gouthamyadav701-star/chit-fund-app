@@ -155,7 +155,11 @@
                 </tr>
                 {% for group in groups %}
                 <tr>
-                    <td>{{ group.name }}</td>
+                    <td>
+                        <a href="{{ url_for('members.group_detail', group_id=group.id) }}" style="text-decoration:none;color:#d9fff7;">
+                            <strong>{{ group.name }}</strong>
+                        </a>
+                    </td>
                     <td>Rs {{ "%.2f"|format(group.monthly_amount) }}</td>
                     <td>Rs {{ "%.2f"|format(group.pool_value) }}</td>
                     <td>{{ group.current_round }} / {{ group.total_members }}</td>
@@ -170,6 +174,7 @@
                     </td>
                     <td>
                         {% if current_user.role in ['Admin', 'Manager'] %}
+                        <a class="button secondary" href="{{ url_for('members.group_detail', group_id=group.id) }}">Open</a>
                         <a class="button secondary" href="{{ url_for('members.edit_group', group_id=group.id) }}">Edit</a>
                         <a class="button secondary" href="{{ url_for('members.existing_group_setup', group_id=group.id) }}">Existing Setup</a>
                         {% if group.completed_on %}
@@ -177,7 +182,6 @@
                             {{ action_form.hidden_tag() }}
                             <button class="danger btn-sm" type="submit">Delete Now</button>
                         </form>
-                        {% endif %}
                         {% endif %}
                         {% if current_user.role in ['Admin', 'Manager'] and group.current_round < group.total_members %}
                         <form class="inline" method="post" action="{{ url_for('members.advance_round', group_id=group.id) }}">
@@ -187,6 +191,9 @@
                         </form>
                         {% else %}
                         Current
+                        {% endif %}
+                        {% elif current_user.role == 'Viewer' %}
+                        <a class="button secondary" href="{{ url_for('members.group_detail', group_id=group.id) }}">Open</a>
                         {% endif %}
                     </td>
                 </tr>

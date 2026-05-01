@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Group Detail{% endblock %}
+{% block topbar_title %}Group Detail{% endblock %}
+{% block content %}
+<div class="stack">
+    <div class="card">
+        <div class="page-header">
+            <div>
+                <h1 style="margin:0;">{{ group.name }}</h1>
+                <p class="muted" style="margin:8px 0 0;">Full group overview with running month, members, and winner history.</p>
+            </div>
+            <div class="actions">
+                <a class="button secondary" href="{{ url_for('members.group_list') }}">Back to Groups</a>
+                {% if current_user.role in ['Admin', 'Manager'] %}
+                <a class="button secondary" href="{{ url_for('members.edit_group', group_id=group.id) }}">Edit Group</a>
+                <a class="button secondary" href="{{ url_for('members.existing_group_setup', group_id=group.id) }}">Existing Setup</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="grid">
+            <div class="stat">
+                <h3>Monthly Amount</h3>
+                <strong class="mono">Rs {{ "%.2f"|format(group.monthly_amount) }}</strong>
+            </div>
+            <div class="stat">
+                <h3>Pool Value</h3>
+                <strong class="mono">Rs {{ "%.2f"|format(group.pool_value) }}</strong>
+            </div>
+            <div class="stat">
+                <h3>Running Month</h3>
+                <strong>{{ group.current_round }} / {{ group.total_members }}</strong>
+            </div>
+            <div class="stat">
+                <h3>Active Slots</h3>
+                <strong>{{ group.active_membership_count }}</strong>
+            </div>
+            <div class="stat">
+                <h3>Next Due</h3>
+                <strong class="mono" style="font-size:22px;">{{ group.current_due_date.strftime('%d-%m-%Y') if group.current_due_date else '-' }}</strong>
+            </div>
+            <div class="stat">
+                <h3>Next Auction</h3>
+                <strong class="mono" style="font-size:22px;">{{ group.next_auction_date.strftime('%d-%m-%Y') if group.next_auction_date else '-' }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0;">Current Running Month</h2>
+        {% if current_cycle %}
+        <div class="grid">
+            <div>
+                <p class="eyebrow">Cycle</p>
+                <div class="metric" style="font-size:22px;">{{ current_cycle.cycle_number }}</div>
+            </div>
+            <div>
+                <p class="eyebrow">Status</p>
+                <span class="pill {{ 'overdue' if current_cycle.status == 'Closed' else '' }}">{{ current_cycle.status }}</span>
+            </div>
+            <div>
+                <p class="eyebrow">Due Date</p>
+                <div>{{ current_cycle.due_date.strftime('%d-%m-%Y') }}</div>
+            </div>
+            <div>
+                <p class="eyebrow">Auction Date</p>
+                <div>{{ current_cycle.auction_date.strftime('%d-%m-%Y') }}</div>
+            </div>
+            <div>
+                <p class="eyebrow">Expected Collection</p>
+                <div class="mono">Rs {{ "%.2f"|format(current_cycle.expected_collection) }}</div>
+            </div>
+            <div>
+                <p class="eyebrow">Collected So Far</p>
+                <div class="mono">Rs {{ "%.2f"|format(current_cycle.collected_amount) }}</div>
+            </div>
+        </div>
+        {% else %}
+        <p>No running cycle found for this group.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="page-header" style="margin-bottom:14px;">
+            <h2 style="margin:0;">Members In This Group</h2>
+            <span class="muted">{{ memberships|length }} slots</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Member</th>
+                    <th>Slot</th>
+                    <th>Share</th>
+                    <th>Status</th>
+                    <th>Paid This Month</th>
+                    <th>Outstanding</th>
+                    <th>Penalty</th>
+                    <th>Dividend</th>
+                </tr>
+                {% for membership in memberships %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('members.member_detail', member_id=membership.member.id) }}" style="text-decoration:none;color:#d9fff7;">
+                            <strong>{{ membership.member.name }}</strong>
+                        </a><br>
+                        <span class="muted">{{ membership.member.phone or membership.member.email or "-" }}</span>
+                    </td>
+                    <td>{{ membership.slot_number }}</td>
+                    <td>{{ membership.share_label }}</td>
+                    <td><span class="pill">{{ membership.status }}</span></td>
+                    <td class="mono">Rs {{ "%.2f"|format(membership.current_cycle_paid_amount) }}</td>
+                    <td class="mono">Rs {{ "%.2f"|format(membership.outstanding_amount) }}</td>
+                    <td class="mono">Rs {{ "%.2f"|format(membership.penalty_balance) }}</td>
+                    <td class="mono">Rs {{ "%.2f"|format(membership.total_dividend) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8">No members assigned to this group yet.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0;">Winner History</h2>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Month</th>
+                    <th>Auction Date</th>
+                    <th>Winner</th>
+                    <th>Slot</th>
+                    <th>Share</th>
+                    <th>Winning Bid</th>
+                    <th>Final Payout</th>
+                    <th>Discount</th>
+                    <th>Dividend / Member</th>
+                </tr>
+                {% for cycle in winner_cycles %}
+                <tr>
+                    <td>{{ cycle.cycle_number }}</td>
+                    <td>{{ cycle.auction_date.strftime('%d-%m-%Y') }}</td>
+                    <td>
+                        <a href="{{ url_for('members.member_detail', member_id=cycle.winner_membership.member.id) }}" style="text-decoration:none;color:#d9fff7;">
+                            <strong>{{ cycle.winner_membership.member.name }}</strong>
+                        </a>
+                    </td>
+                    <td>{{ cycle.winner_membership.slot_number }}</td>
+                    <td>{{ cycle.winner_membership.share_label }}</td>
+                    <td class="mono">Rs {{ "%.2f"|format(cycle.winning_bid_amount or 0) }}</td>
+                    <td class="mono">Rs {{ "%.2f"|format(cycle.winner_payout_amount or 0) }}</td>
+                    <td class="mono">Rs {{ "%.2f"|format(cycle.discount_amount or 0) }}</td>
+                    <td class="mono">Rs {{ "%.2f"|format(cycle.dividend_per_member or 0) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9">No winners recorded for this group yet.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
