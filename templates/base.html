@@ -517,7 +517,7 @@
     <div class="layout">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
         <aside class="sidebar">
-            {% set member_nav_endpoints = ['members.add_member', 'members.edit_member', 'members.member_detail', 'members.add_membership', 'members.member_history_pdf'] %}
+            {% set member_nav_endpoints = ['members.add_member', 'members.edit_member', 'members.member_detail', 'members.add_membership', 'members.member_history_pdf', 'members.archived_members', 'members.restore_member'] %}
             {% set group_nav_endpoints = ['members.group_list', 'members.group_detail', 'members.create_group', 'members.edit_group', 'members.existing_group_setup'] %}
             <div class="brand-block">
                 {% if active_business and active_business.logo_url %}

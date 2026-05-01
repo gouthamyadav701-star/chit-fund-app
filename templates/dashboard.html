@@ -92,6 +92,9 @@
             <div class="page-header" style="margin-bottom: 14px;">
                 <h2 style="margin: 0;">Members</h2>
                 <div class="actions">
+                    {% if current_user.role in ['Admin', 'Manager'] %}
+                    <a class="button secondary" href="{{ url_for('members.archived_members') }}">Archived Members</a>
+                    {% endif %}
                     <a class="button secondary" href="{{ url_for('payments.export_excel') }}">Export Excel</a>
                 </div>
             </div>

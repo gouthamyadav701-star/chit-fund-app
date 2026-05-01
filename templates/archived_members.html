@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Archived Members{% endblock %}
+{% block topbar_title %}Archived Members{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 style="margin:0;">Archived Members</h1>
+            <p class="muted" style="margin:8px 0 0;">Restore accidentally archived members back into the active member list.</p>
+        </div>
+        <div class="actions">
+            <a class="button secondary" href="{{ url_for('core.dashboard') }}">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Last Known Groups</th>
+                <th>Paid</th>
+                <th>Due</th>
+                <th>Actions</th>
+            </tr>
+            {% for member in members %}
+            <tr>
+                <td><strong>{{ member.name }}</strong></td>
+                <td class="muted">{{ member.phone or member.email or "-" }}</td>
+                <td>{{ member.active_group_names }}</td>
+                <td class="mono">Rs {{ "%.2f"|format(member.paid_amount) }}</td>
+                <td class="mono">Rs {{ "%.2f"|format(member.due_amount) }}</td>
+                <td>
+                    <form class="inline" method="post" action="{{ url_for('members.restore_member', member_id=member.id) }}">
+                        {{ action_form.hidden_tag() }}
+                        <button class="button secondary btn-sm" type="submit">Restore</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">No archived members found.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endblock %}

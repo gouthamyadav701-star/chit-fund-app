@@ -144,6 +144,32 @@ def delete_member(member_id):
     return redirect(url_for("core.dashboard"))
 
 
+@members_bp.route("/members/archived")
+@manager_required
+def archived_members():
+    members = (
+        Member.query.filter_by(business_id=current_user.business_id, deleted=True)
+        .order_by(Member.updated_at.desc(), Member.name.asc())
+        .all()
+    )
+    action_form = EmptyForm()
+    return render_template("archived_members.html", members=members, action_form=action_form)
+
+
+@members_bp.route("/members/<int:member_id>/restore", methods=["POST"])
+@manager_required
+def restore_member(member_id):
+    form = EmptyForm()
+    if form.validate_on_submit():
+        member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=True).first_or_404()
+        member.deleted = False
+        member.updated_by = current_user.id
+        log_audit(current_user.id, "member.restored", "Member", member.id, {"name": member.name})
+        db.session.commit()
+        flash(f"{member.name} was restored.", "success")
+    return redirect(url_for("members.archived_members"))
+
+
 @members_bp.route("/groups", methods=["GET", "POST"])
 @manager_required
 def create_group():
