@@ -29,6 +29,32 @@ def _ensure_staff_access():
         abort(403)
 
 
+def _resolve_member_for_current_business(member_id: int) -> Member:
+    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first()
+    if member:
+        return member
+
+    legacy_membership = (
+        GroupMembership.query.join(ChitGroup, GroupMembership.group_id == ChitGroup.id)
+        .filter(
+            GroupMembership.member_id == member_id,
+            GroupMembership.deleted.is_(False),
+            ChitGroup.deleted.is_(False),
+            ChitGroup.business_id == current_user.business_id,
+        )
+        .first()
+    )
+    if not legacy_membership or not legacy_membership.member or legacy_membership.member.deleted:
+        abort(404)
+
+    member = legacy_membership.member
+    if member.business_id != current_user.business_id:
+        member.business_id = current_user.business_id
+        member.updated_by = current_user.id
+        db.session.commit()
+    return member
+
+
 @members_bp.route("/members/add", methods=["GET", "POST"])
 @manager_required
 def add_member():
@@ -72,7 +98,7 @@ def add_member():
 @members_bp.route("/members/<int:member_id>/edit", methods=["GET", "POST"])
 @manager_required
 def edit_member(member_id):
-    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    member = _resolve_member_for_current_business(member_id)
     form = MemberForm(obj=member)
     groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
     form.group_id.choices = [(0, "No group")] + [(group.id, group.name) for group in groups]
@@ -458,7 +484,7 @@ def archive_group(group_id):
 def member_detail(member_id):
     if current_user.role == "Customer" and current_user.member_id != member_id:
         abort(403)
-    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    member = _resolve_member_for_current_business(member_id)
     membership_form = MembershipForm()
     groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
     membership_form.group_id.choices = [(group.id, group.name) for group in groups]
@@ -470,7 +496,7 @@ def member_detail(member_id):
 def add_membership(member_id):
     if current_user.role == "Customer" and current_user.member_id != member_id:
         abort(403)
-    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    member = _resolve_member_for_current_business(member_id)
     form = MembershipForm()
     groups = ChitGroup.query.filter_by(deleted=False, business_id=current_user.business_id).order_by(ChitGroup.name).all()
     form.group_id.choices = [(group.id, group.name) for group in groups]
@@ -497,7 +523,7 @@ def add_membership(member_id):
 def member_history_pdf(member_id):
     if current_user.role == "Customer" and current_user.member_id != member_id:
         abort(403)
-    member = Member.query.filter_by(id=member_id, business_id=current_user.business_id, deleted=False).first_or_404()
+    member = _resolve_member_for_current_business(member_id)
     pdf_file = build_member_history_pdf(member)
     safe_name = member.name.replace(" ", "_")
     return send_file(
