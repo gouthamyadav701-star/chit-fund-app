@@ -112,6 +112,7 @@
                     <a class="button secondary" href="{{ url_for('payments.export_excel') }}">Export Excel</a>
                 </div>
             </div>
+            {% if search %}
             <div class="table-wrap">
                 <table>
                     <tr>
@@ -151,10 +152,15 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7">No members yet.</td></tr>
+                    <tr><td colspan="7">No members found for `{{ search }}`.</td></tr>
                     {% endfor %}
                 </table>
             </div>
+            {% else %}
+            <div class="flash info" style="margin-top: 10px;">
+                Use search to find a member directly. Full member lists are available inside each group.
+            </div>
+            {% endif %}
         </div>
 
         <div class="card dashboard-panel" data-dashboard-panel="groups">

@@ -121,8 +121,8 @@ def dashboard():
     }
 
     try:
-        members = _load_business_members(business_id)
         if search:
+            members = _load_business_members(business_id)
             members = [
                 member
                 for member in members
