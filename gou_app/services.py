@@ -88,6 +88,17 @@ def generate_group_cycles(group: ChitGroup, actor_id: int | None = None) -> None
         group.cycles.append(cycle)
 
 
+def calculate_group_running_round(group: ChitGroup, as_of=None) -> int:
+    if not group.start_date:
+        return 1
+    comparison_date = as_of or today_ist()
+    if comparison_date <= group.start_date:
+        return 1
+    delta = relativedelta(comparison_date, group.start_date)
+    months_elapsed = max((delta.years * 12) + delta.months, 0)
+    return min(max(months_elapsed + 1, 1), int(group.total_members or 1))
+
+
 def enroll_member_in_group(
     member: Member,
     group: ChitGroup,
@@ -197,6 +208,57 @@ def create_opening_balance_payment(
         "Payment",
         payment.id,
         {"amount": amount, "member": member.name, "group": membership.group.name},
+    )
+    return payment
+
+
+def create_opening_cycle_payment(
+    member: Member,
+    membership: GroupMembership,
+    cycle: ChitCycle,
+    amount: float,
+    actor_id: int | None = None,
+) -> Payment:
+    payment = Payment(
+        business_id=membership.business_id,
+        member=member,
+        group=membership.group,
+        membership=membership,
+        cycle=cycle,
+        amount=amount,
+        expected_amount=membership.expected_amount,
+        penalty_amount=0,
+        status="Opening",
+        due_date=cycle.due_date,
+        timestamp=datetime.combine(cycle.due_date, datetime.min.time()),
+        created_by=actor_id,
+        updated_by=actor_id,
+    )
+    cycle.collected_amount = round(float(cycle.collected_amount or 0) + amount, 2)
+    db.session.add(payment)
+    db.session.flush()
+
+    db.session.add(
+        LedgerEntry(
+            business_id=membership.business_id,
+            group=membership.group,
+            member=member,
+            membership=membership,
+            cycle=cycle,
+            payment=payment,
+            entry_type="OpeningBalance",
+            amount=amount,
+            description=f"Imported month {cycle.cycle_number} payment for {membership.group.name}",
+            created_by=actor_id,
+            updated_by=actor_id,
+        )
+    )
+    log_audit(
+        actor_id,
+        "payment.opening_cycle_imported",
+        "Payment",
+        payment.id,
+        {"amount": amount, "member": member.name, "group": membership.group.name, "cycle_number": cycle.cycle_number},
     )
     return payment
 

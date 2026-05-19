@@ -11,7 +11,8 @@ from ..services import (
     assign_cycle_winner,
     archive_group_data,
     build_member_history_pdf,
-    create_opening_balance_payment,
+    calculate_group_running_round,
+    create_opening_cycle_payment,
     email_group_archive,
     ensure_group_completion_dates,
     enroll_member_in_group,
@@ -62,6 +63,70 @@ def _resolve_member_for_current_business(member_id: int) -> Member:
     if member.deleted:
         abort(404)
     return member
+
+
+def _parse_float_value(raw_value, default: float = 0.0) -> float:
+    try:
+        return float((raw_value or "").strip() or default)
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+
+def _parse_int_value(raw_value, default: int = 0) -> int:
+    try:
+        return int((raw_value or "").strip() or default)
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+
+def _build_existing_setup_values(group: ChitGroup, memberships: list[GroupMembership], setup_cycles) -> dict[int, dict]:
+    values: dict[int, dict] = {}
+
+    for membership in memberships:
+        monthly_values = {cycle.cycle_number: 0.0 for cycle in setup_cycles}
+        opening_payments = [
+            payment
+            for payment in membership.payments
+            if not payment.deleted and payment.status == "Opening" and payment.group_id == group.id
+        ]
+
+        legacy_total = 0.0
+        for payment in opening_payments:
+            if payment.cycle and payment.cycle.group_id == group.id:
+                monthly_values[payment.cycle.cycle_number] = round(
+                    monthly_values.get(payment.cycle.cycle_number, 0.0) + float(payment.amount),
+                    2,
+                )
+            else:
+                legacy_total += float(payment.amount)
+
+        if legacy_total > 0 and not any(amount > 0 for amount in monthly_values.values()):
+            remaining = round(legacy_total, 2)
+            for cycle in setup_cycles:
+                if remaining <= 0:
+                    break
+                allocated = round(min(float(membership.expected_amount), remaining), 2)
+                monthly_values[cycle.cycle_number] = allocated
+                remaining = round(remaining - allocated, 2)
+
+        winner_cycle = next(
+            (
+                cycle
+                for cycle in sorted(group.cycles, key=lambda item: item.cycle_number)
+                if not cycle.deleted and cycle.winner_membership_id == membership.id
+            ),
+            None,
+        )
+
+        values[membership.id] = {
+            "monthly_values": monthly_values,
+            "penalty": round(float(membership.penalty_balance or 0), 2),
+            "dividend": round(float(membership.total_dividend or 0), 2),
+            "won_cycle": winner_cycle.cycle_number if winner_cycle else 0,
+            "payout": round(float(winner_cycle.winning_bid_amount or 0), 2) if winner_cycle else 0.0,
+        }
+
+    return values
 
 
 @members_bp.route("/members/add", methods=["GET", "POST"])
@@ -329,12 +394,21 @@ def existing_group_setup(group_id):
         key=lambda item: (item.member.name.lower(), item.slot_number),
     )
     form = ExistingGroupSetupForm()
-    if not form.is_submitted():
-        form.current_round.data = group.current_round
+    running_round = calculate_group_running_round(group)
+    setup_cycles = [
+        cycle
+        for cycle in sorted(group.cycles, key=lambda item: item.cycle_number)
+        if not cycle.deleted and cycle.cycle_number <= running_round
+    ]
+    setup_ready = len(memberships) >= int(group.total_members or 0)
 
     has_live_activity = any(
         not payment.deleted and payment.status != "Opening" for payment in group.payments
-    ) or any(any(not bid.deleted for bid in cycle.bids) for cycle in group.cycles)
+    ) or any(
+        any(not bid.deleted and (bid.note or "").strip() != "Imported opening setup" for bid in cycle.bids)
+        for cycle in group.cycles
+    )
+    existing_setup_values = _build_existing_setup_values(group, memberships, setup_cycles)
 
     if form.validate_on_submit():
         if has_live_activity:
@@ -347,16 +421,44 @@ def existing_group_setup(group_id):
                 form=form,
                 group=group,
                 memberships=memberships,
+                running_round=running_round,
+                setup_cycles=setup_cycles,
+                setup_ready=setup_ready,
+                existing_setup_values=existing_setup_values,
+                has_live_activity=has_live_activity,
+            )
+        if not setup_ready:
+            flash(
+                f"Add all group members and fill all {group.total_members} slots before using Existing Setup.",
+                "warning",
+            )
+            return render_template(
+                "existing_group_setup.html",
+                form=form,
+                group=group,
+                memberships=memberships,
+                running_round=running_round,
+                setup_cycles=setup_cycles,
+                setup_ready=setup_ready,
+                existing_setup_values=existing_setup_values,
                 has_live_activity=has_live_activity,
             )
 
         try:
-            current_round = min(max(int(form.current_round.data), 1), group.total_members)
+            manual_dividends: dict[int, float] = {}
 
             for payment in group.payments:
                 if not payment.deleted and payment.status == "Opening":
                     payment.deleted = True
                     payment.updated_by = current_user.id
+                    for entry in payment.ledger_entries:
+                        entry.deleted = True
+                        entry.updated_by = current_user.id
+
+            for entry in group.ledger_entries:
+                if not entry.deleted and entry.entry_type == "OpeningBalance":
+                    entry.deleted = True
+                    entry.updated_by = current_user.id
 
             for cycle in group.cycles:
                 cycle.winner_membership = None
@@ -366,46 +468,54 @@ def existing_group_setup(group_id):
                 cycle.collected_amount = 0
                 cycle.penalty_total = 0
                 cycle.updated_by = current_user.id
-                cycle.status = "Closed" if cycle.cycle_number < current_round else "Scheduled"
-                if cycle.cycle_number == current_round:
+                cycle.status = "Closed" if cycle.cycle_number < running_round else "Scheduled"
+                if cycle.cycle_number == running_round:
                     cycle.status = "Open"
                 for bid in cycle.bids:
                     bid.deleted = True
                     bid.updated_by = current_user.id
+                    for entry in bid.ledger_entries:
+                        entry.deleted = True
+                        entry.updated_by = current_user.id
+                for entry in cycle.ledger_entries:
+                    entry.deleted = True
+                    entry.updated_by = current_user.id
 
             touched_members: dict[int, Member] = {}
-            manual_dividends: dict[int, float] = {}
             for membership in memberships:
                 touched_members[membership.member.id] = membership.member
-                opening_paid = float((request.form.get(f"opening_paid_{membership.id}") or "0").strip() or 0)
-                months_paid = int((request.form.get(f"months_paid_{membership.id}") or "0").strip() or 0)
-                arrears = float((request.form.get(f"arrears_{membership.id}") or "0").strip() or 0)
-                penalty = float((request.form.get(f"penalty_{membership.id}") or "0").strip() or 0)
-                dividend = float((request.form.get(f"dividend_{membership.id}") or "0").strip() or 0)
-                won_cycle_number = int((request.form.get(f"won_cycle_{membership.id}") or "0").strip() or 0)
-                payout_amount = float((request.form.get(f"payout_{membership.id}") or "0").strip() or 0)
+                expected_amount = float(membership.expected_amount)
+                penalty = _parse_float_value(request.form.get(f"penalty_{membership.id}"))
+                dividend = _parse_float_value(request.form.get(f"dividend_{membership.id}"))
+                won_cycle_number = _parse_int_value(request.form.get(f"won_cycle_{membership.id}"))
+                payout_amount = _parse_float_value(request.form.get(f"payout_{membership.id}"))
 
-                if opening_paid <= 0 and months_paid > 0:
-                    opening_paid = round(months_paid * membership.expected_amount, 2)
+                arrears_amount = 0.0
+                for cycle in setup_cycles:
+                    month_amount = round(
+                        max(_parse_float_value(request.form.get(f"month_amount_{membership.id}_{cycle.cycle_number}")), 0.0),
+                        2,
+                    )
+                    if month_amount > 0:
+                        create_opening_cycle_payment(membership.member, membership, cycle, month_amount, current_user.id)
+                    if cycle.cycle_number < running_round:
+                        arrears_amount += max(expected_amount - month_amount, 0.0)
 
-                membership.arrears_balance = round(max(arrears, 0), 2)
+                membership.arrears_balance = round(arrears_amount, 2)
                 membership.penalty_balance = round(max(penalty, 0), 2)
-                membership.updated_by = current_user.id
                 manual_dividends[membership.id] = round(max(dividend, 0), 2)
-
-                if opening_paid > 0:
-                    create_opening_balance_payment(membership.member, membership, round(opening_paid, 2), current_user.id)
+                membership.total_dividend = manual_dividends[membership.id]
+                membership.updated_by = current_user.id
 
                 if won_cycle_number > 0:
                     cycle = next((item for item in group.cycles if item.cycle_number == won_cycle_number), None)
-                    if cycle and cycle.cycle_number < current_round and payout_amount > 0:
+                    if cycle and cycle.cycle_number < running_round and payout_amount > 0:
                         assign_cycle_winner(cycle, membership, round(payout_amount, 2), current_user.id, note="Imported opening setup")
 
             for membership in memberships:
-                if manual_dividends.get(membership.id, 0) > 0:
-                    membership.total_dividend = manual_dividends[membership.id]
+                membership.total_dividend = manual_dividends.get(membership.id, 0.0)
 
-            group.current_round = current_round
+            group.current_round = running_round
             group.completed_on = None
             group.retention_expires_on = None
             group.archive_export_sent_on = None
@@ -417,7 +527,10 @@ def existing_group_setup(group_id):
 
             log_audit(current_user.id, "group.opening_setup_saved", "ChitGroup", group.id, {"round": group.current_round})
             db.session.commit()
-            flash(f"Existing group setup saved for {group.name}. You can continue from month {group.current_round}.", "success")
+            flash(
+                f"Existing group setup saved for {group.name}. Running month {group.current_round} was auto-calculated from the group start date.",
+                "success",
+            )
             return redirect(url_for("core.dashboard"))
         except Exception:
             db.session.rollback()
@@ -429,6 +542,10 @@ def existing_group_setup(group_id):
         form=form,
         group=group,
         memberships=memberships,
+        running_round=running_round,
+        setup_cycles=setup_cycles,
+        setup_ready=setup_ready,
+        existing_setup_values=existing_setup_values,
         has_live_activity=has_live_activity,
     )
 

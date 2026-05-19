@@ -117,7 +117,7 @@ class BusinessSettingsForm(FlaskForm):
 
 class MemberForm(FlaskForm):
     name = StringField("Name", validators=[DataRequired()])
-    email = StringField("Email", validators=[Optional(), Email()])
+    email = StringField("Email (Optional)", validators=[Optional(), Email()])
     phone = StringField(
         "Phone",
         validators=[
@@ -172,7 +172,6 @@ class ChitGroupForm(FlaskForm):
 
 
 class ExistingGroupSetupForm(FlaskForm):
-    current_round = IntegerField("Current Running Month / Cycle", validators=[DataRequired(), NumberRange(min=1)])
     submit = SubmitField("Save Existing Group Setup")
 
 

@@ -5,13 +5,15 @@
     <form method="post">
         {{ form.hidden_tag() }}
         <label>{{ form.name.label }}</label>
-        {{ form.name() }}
-        <label>{{ form.email.label }}</label>
-        {{ form.email() }}
+        {{ form.name(placeholder="Enter member name") }}
         <label>{{ form.phone.label }}</label>
-        {{ form.phone() }}
+        {{ form.phone(placeholder="Enter 10-digit phone number") }}
+        {% if is_edit %}
+        <label>{{ form.email.label }}</label>
+        {{ form.email(placeholder="Leave blank if not available") }}
+        {% endif %}
         <label>{{ form.total_amount.label }}</label>
-        {{ form.total_amount() }}
+        {{ form.total_amount(placeholder="Enter total contract amount") }}
         <label>{{ form.group_id.label }}</label>
         {{ form.group_id() }}
         {{ form.submit() }}
