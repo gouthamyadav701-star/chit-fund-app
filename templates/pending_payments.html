@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Pending Payments{% endblock %}
+{% block topbar_title %}Pending Payments{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 style="margin:0;">Pending Payments</h1>
+        <p class="section-note">Tap copy to grab the phone number and follow up quickly.</p>
+    </div>
+    <div class="actions">
+        <a class="button secondary" href="{{ url_for('core.dashboard') }}">Back to Dashboard</a>
+    </div>
+</div>
+
+<style>
+    .pending-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+    .pending-card {
+        padding: 18px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.01) 100%);
+    }
+    .pending-card .label {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+    .pending-card .value {
+        font-size: 15px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+    @media (max-width: 860px) {
+        .pending-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+{% if pending_items %}
+<div class="pending-grid">
+    {% for item in pending_items %}
+    <div class="pending-card">
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;">
+            <div>
+                <div class="label">Member Name</div>
+                <div class="value">{{ item.member_name }}</div>
+            </div>
+            <div>
+                <div class="label">Group Name</div>
+                <div class="value">{{ item.group_name }}</div>
+            </div>
+            <div>
+                <div class="label">Payment ID</div>
+                <div class="value">{{ item.payment_id }}</div>
+            </div>
+            <div>
+                <div class="label">Phone Number</div>
+                <div class="value mono">{{ item.phone or "-" }}</div>
+            </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px;">
+            <div>
+                <div class="label">Running Month</div>
+                <div class="value">{{ item.cycle_number }}</div>
+            </div>
+            <div>
+                <div class="label">Outstanding</div>
+                <div class="value mono">Rs {{ "%.2f"|format(item.outstanding_amount) }}</div>
+            </div>
+        </div>
+
+        <div class="actions" style="margin-top:18px;">
+            {% if item.phone %}
+            <button type="button" class="button secondary copy-phone-btn" data-phone="{{ item.phone }}">Copy Phone</button>
+            {% endif %}
+            <a class="button secondary" href="{{ url_for('members.group_detail', group_id=item.membership.group_id) }}">Open Group</a>
+            <a class="button secondary" href="{{ url_for('members.member_detail', member_id=item.membership.member_id) }}">Open Member</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p style="margin:0;">No pending payments right now.</p>
+</div>
+{% endif %}
+
+<script>
+    (function () {
+        const buttons = Array.from(document.querySelectorAll(".copy-phone-btn"));
+        buttons.forEach((button) => {
+            button.addEventListener("click", async function () {
+                const phone = button.dataset.phone || "";
+                if (!phone) {
+                    return;
+                }
+                try {
+                    await navigator.clipboard.writeText(phone);
+                    const original = button.textContent;
+                    button.textContent = "Copied";
+                    setTimeout(() => {
+                        button.textContent = original;
+                    }, 1200);
+                } catch (error) {
+                    button.textContent = "Copy Failed";
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

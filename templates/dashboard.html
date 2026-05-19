@@ -71,14 +71,11 @@
 </div>
 
 <div class="grid dashboard-panel is-active" data-dashboard-panel="overview">
-    <div class="card stat">
-        <h3>Total Collected</h3>
-        <strong class="mono">Rs {{ "%.2f"|format(metrics.total_collections) }}</strong>
-    </div>
-    <div class="card stat">
+    <a class="card stat" href="{{ url_for('payments.pending_list') }}" style="text-decoration:none;color:inherit;">
         <h3>Pending Payments</h3>
         <strong>{{ metrics.pending_payments }}</strong>
-    </div>
+        <div class="muted" style="margin-top:8px;font-size:12px;">Tap to view list</div>
+    </a>
     <div class="card stat">
         <h3>Penalty Profit</h3>
         <strong>Rs {{ "%.2f"|format(metrics.profit) }}</strong>

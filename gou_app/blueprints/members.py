@@ -326,6 +326,12 @@ def group_detail(group_id):
         (cycle for cycle in group.cycles if not cycle.deleted and cycle.cycle_number == group.current_round),
         None,
     )
+    current_month_pending = 0.0
+    if current_cycle:
+        current_month_pending = round(
+            max(float(current_cycle.expected_collection or 0) - float(current_cycle.collected_amount or 0), 0.0),
+            2,
+        )
     winner_cycles = [
         cycle
         for cycle in group.cycles
@@ -336,6 +342,7 @@ def group_detail(group_id):
         group=group,
         memberships=memberships,
         current_cycle=current_cycle,
+        current_month_pending=current_month_pending,
         winner_cycles=winner_cycles,
     )
 

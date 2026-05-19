@@ -7,7 +7,7 @@
         <div class="page-header">
             <div>
                 <h1 style="margin:0;">{{ group.name }}</h1>
-                <p class="muted" style="margin:8px 0 0;">Full group overview with running month, members, and winner history.</p>
+                <p class="muted" style="margin:8px 0 0;">Full group overview with running month collection, members, and winner history.</p>
             </div>
             <div class="actions">
                 <a class="button secondary" href="{{ url_for('members.group_list') }}">Back to Groups</a>
@@ -70,8 +70,12 @@
                 <div class="mono">Rs {{ "%.2f"|format(current_cycle.expected_collection) }}</div>
             </div>
             <div>
-                <p class="eyebrow">Collected So Far</p>
+                <p class="eyebrow">Collected This Month</p>
                 <div class="mono">Rs {{ "%.2f"|format(current_cycle.collected_amount) }}</div>
+            </div>
+            <div>
+                <p class="eyebrow">Pending This Month</p>
+                <div class="mono">Rs {{ "%.2f"|format(current_month_pending) }}</div>
             </div>
         </div>
         {% else %}

@@ -65,6 +65,40 @@ def history():
     return render_template("history.html", payments=payments, defaulters=defaulters, filter_form=form)
 
 
+@payments_bp.route("/payments/pending")
+@login_required
+def pending_list():
+    if current_user.role == "Customer":
+        abort(403)
+
+    pending_items = []
+    for membership in pending_memberships():
+        cycle = membership.current_cycle
+        cycle_payments = [
+            payment
+            for payment in membership.payments
+            if not payment.deleted and cycle and payment.cycle_id == cycle.id
+        ]
+        latest_payment = max(
+            cycle_payments,
+            key=lambda item: item.timestamp or item.created_at,
+            default=None,
+        )
+        pending_items.append(
+            {
+                "membership": membership,
+                "group_name": membership.group.name if membership.group else "-",
+                "member_name": membership.member.name if membership.member else "-",
+                "phone": membership.member.phone if membership.member and membership.member.phone else "",
+                "payment_id": latest_payment.id if latest_payment else "-",
+                "cycle_number": cycle.cycle_number if cycle else "-",
+                "outstanding_amount": membership.outstanding_amount,
+            }
+        )
+
+    return render_template("pending_payments.html", pending_items=pending_items)
+
+
 @payments_bp.route("/payments/export")
 @login_required
 def export_excel():
