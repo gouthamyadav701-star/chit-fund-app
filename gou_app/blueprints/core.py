@@ -12,15 +12,87 @@ from ..tenant import current_business, current_business_id
 core_bp = Blueprint("core", __name__)
 
 
+def _resolve_member_for_business(member_id: int | None, business_id: int | None) -> Member | None:
+    if not member_id or not business_id:
+        return None
+
+    member = Member.query.filter_by(id=member_id, business_id=business_id, deleted=False).first()
+    if member:
+        return member
+
+    legacy_membership = (
+        GroupMembership.query.join(ChitGroup, GroupMembership.group_id == ChitGroup.id)
+        .filter(
+            GroupMembership.member_id == member_id,
+            GroupMembership.deleted.is_(False),
+            ChitGroup.deleted.is_(False),
+            ChitGroup.business_id == business_id,
+        )
+        .first()
+    )
+    if not legacy_membership or not legacy_membership.member:
+        return None
+
+    member = legacy_membership.member
+    changed = False
+    if member.business_id != business_id:
+        member.business_id = business_id
+        changed = True
+    if member.deleted and legacy_membership.status == "Active":
+        member.deleted = False
+        changed = True
+    if changed:
+        member.updated_by = current_user.id
+        db.session.commit()
+    return None if member.deleted else member
+
+
+def _load_business_members(business_id: int | None) -> list[Member]:
+    if not business_id:
+        return []
+
+    members = {
+        member.id: member
+        for member in Member.query.filter_by(deleted=False, business_id=business_id).order_by(Member.name).all()
+    }
+
+    linked_memberships = (
+        GroupMembership.query.join(Member, GroupMembership.member_id == Member.id)
+        .join(ChitGroup, GroupMembership.group_id == ChitGroup.id)
+        .filter(
+            GroupMembership.deleted.is_(False),
+            GroupMembership.status == "Active",
+            ChitGroup.deleted.is_(False),
+            ChitGroup.business_id == business_id,
+        )
+        .all()
+    )
+
+    changed = False
+    for membership in linked_memberships:
+        member = membership.member
+        if not member:
+            continue
+        if member.business_id != business_id:
+            member.business_id = business_id
+            changed = True
+        if member.deleted:
+            member.deleted = False
+            changed = True
+        member.updated_by = current_user.id
+        members[member.id] = member
+
+    if changed:
+        db.session.commit()
+
+    return sorted(members.values(), key=lambda item: item.name.lower())
+
+
 @core_bp.route("/")
 @login_required
 def dashboard():
     if current_user.role == "Customer":
-        member = (
-            Member.query.filter_by(id=current_user.member_id, business_id=current_user.business_id, deleted=False).first()
-            if current_user.member_id
-            else None
-        )
+        member = _resolve_member_for_business(current_user.member_id, current_user.business_id)
         recent_payments = []
         if member:
             recent_payments = sorted(
@@ -49,7 +121,7 @@ def dashboard():
     }
 
     try:
-        members = Member.query.filter_by(deleted=False, business_id=business_id).order_by(Member.name).all()
+        members = _load_business_members(business_id)
         if search:
             members = [
                 member

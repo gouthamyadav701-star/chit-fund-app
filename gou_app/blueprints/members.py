@@ -45,13 +45,22 @@ def _resolve_member_for_current_business(member_id: int) -> Member:
         .first()
     )
     if not legacy_membership or not legacy_membership.member or legacy_membership.member.deleted:
-        abort(404)
+        if not legacy_membership or not legacy_membership.member:
+            abort(404)
 
     member = legacy_membership.member
+    changed = False
     if member.business_id != current_user.business_id:
         member.business_id = current_user.business_id
+        changed = True
+    if member.deleted and legacy_membership.status == "Active":
+        member.deleted = False
+        changed = True
+    if changed:
         member.updated_by = current_user.id
         db.session.commit()
+    if member.deleted:
+        abort(404)
     return member
 
 
