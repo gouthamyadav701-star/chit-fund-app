@@ -13,6 +13,7 @@
     <div class="card">
         <form method="post">
             {{ form.hidden_tag() }}
+            {% include "_form_error_summary.html" %}
             <label>{{ form.name.label }}</label>
             {{ form.name(placeholder="Enter your business name") }}
 

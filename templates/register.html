@@ -7,6 +7,7 @@
     <p class="auth-subtitle">Create a new chit-fund business, join an existing business as staff, or register as a customer.</p>
     <form method="post">
         {{ form.hidden_tag() }}
+        {% include "_form_error_summary.html" %}
         <label>{{ form.account_type.label }}</label>
         {{ form.account_type(id="account-type") }}
         <label id="business-code-label">{{ form.business_code.label }}</label>

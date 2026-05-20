@@ -7,6 +7,7 @@
     <p class="auth-subtitle">Enter your business code first. Staff can sign in with username, and customers can sign in with their phone number.</p>
     <form method="post">
         {{ form.hidden_tag() }}
+        {% include "_form_error_summary.html" %}
         <label>{{ form.business_code.label }}</label>
         {{ form.business_code(placeholder="Enter business code") }}
         <label>{{ form.username.label }}</label>

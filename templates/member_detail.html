@@ -143,6 +143,8 @@
             <h2 style="margin-top: 0;">Add New Membership</h2>
             <form method="post" action="{{ url_for('members.add_membership', member_id=member.id) }}">
                 {{ membership_form.hidden_tag() }}
+                {% set form = membership_form %}
+                {% include "_form_error_summary.html" %}
                 <label>{{ membership_form.group_id.label }}</label>
                 {{ membership_form.group_id() }}
                 <label>{{ membership_form.member_number.label }}</label>

@@ -147,7 +147,7 @@ def add_member():
                 name=form.name.data.strip(),
                 email=(form.email.data or "").strip() or None,
                 phone=(form.phone.data or "").strip() or None,
-                total_amount=form.total_amount.data,
+                total_amount=0,
                 group_id=form.group_id.data or None,
                 created_by=current_user.id,
                 updated_by=current_user.id,
@@ -158,6 +158,7 @@ def add_member():
                 selected_group = ChitGroup.query.filter_by(id=form.group_id.data, business_id=current_user.business_id, deleted=False).first()
                 if selected_group:
                     enroll_member_in_group(member, selected_group, current_user.id, is_primary=True, share_units=1.0)
+            recalculate_member_financials(member)
             db.session.commit()
             flash(f"Member {member.name} added.", "success")
             return redirect(url_for("core.dashboard"))
@@ -196,7 +197,6 @@ def edit_member(member_id):
             member.name = form.name.data.strip()
             member.email = (form.email.data or "").strip() or None
             member.phone = (form.phone.data or "").strip() or None
-            member.total_amount = form.total_amount.data
             member.updated_by = current_user.id
 
             selected_group_id = form.group_id.data or None
@@ -218,6 +218,7 @@ def edit_member(member_id):
                     membership = enroll_member_in_group(member, selected_group, current_user.id, is_primary=True, share_units=1.0)
                     membership.status = "Active"
 
+            recalculate_member_financials(member)
             log_audit(current_user.id, "member.updated", "Member", member.id, {"name": member.name})
             db.session.commit()
             flash(f"Member {member.name} updated.", "success")

@@ -125,7 +125,6 @@ class MemberForm(FlaskForm):
             Regexp(r"^\d{10}$", message="Use a 10-digit phone number."),
         ],
     )
-    total_amount = FloatField("Total Amount", validators=[DataRequired(), NumberRange(min=0.01)])
     group_id = SelectField("Primary Chit Group", coerce=int, validators=[Optional()])
     submit = SubmitField("Save Member")
 

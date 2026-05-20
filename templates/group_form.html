@@ -4,6 +4,7 @@
     <h2>{{ "Edit Chit Group" if is_edit else "Create Chit Group" }}</h2>
     <form method="post">
         {{ form.hidden_tag() }}
+        {% include "_form_error_summary.html" %}
         <label>{{ form.name.label }}</label>
         {{ form.name() }}
         <label>{{ form.monthly_amount.label }}</label>

@@ -1,0 +1,12 @@
+{% if form and form.errors %}
+<div class="flash danger" style="margin-bottom: 16px;">
+    <strong>Please check these fields:</strong>
+    <ul style="margin:8px 0 0 18px; padding:0;">
+        {% for field_name, errors in form.errors.items() %}
+            {% for error in errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

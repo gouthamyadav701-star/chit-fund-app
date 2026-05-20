@@ -7,6 +7,7 @@
     <p class="auth-subtitle">Enter your username, email, or customer phone number. We will show the business codes linked to that account.</p>
     <form method="post">
         {{ form.hidden_tag() }}
+        {% include "_form_error_summary.html" %}
         <label>{{ form.identifier.label }}</label>
         {{ form.identifier(placeholder="Enter username, email, or phone number") }}
         {{ form.submit() }}

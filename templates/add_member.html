@@ -4,18 +4,29 @@
     <h2>{{ "Edit Member" if is_edit else "Add Member" }}</h2>
     <form method="post">
         {{ form.hidden_tag() }}
+        {% include "_form_error_summary.html" %}
         <label>{{ form.name.label }}</label>
         {{ form.name(placeholder="Enter member name") }}
+        {% if form.name.errors %}
+        <small class="muted" style="color:#fca5a5;">{{ form.name.errors[0] }}</small>
+        {% endif %}
         <label>{{ form.phone.label }}</label>
         {{ form.phone(placeholder="Enter 10-digit phone number") }}
+        {% if form.phone.errors %}
+        <small class="muted" style="color:#fca5a5;">{{ form.phone.errors[0] }}</small>
+        {% endif %}
         {% if is_edit %}
         <label>{{ form.email.label }}</label>
         {{ form.email(placeholder="Leave blank if not available") }}
+        {% if form.email.errors %}
+        <small class="muted" style="color:#fca5a5;">{{ form.email.errors[0] }}</small>
         {% endif %}
-        <label>{{ form.total_amount.label }}</label>
-        {{ form.total_amount(placeholder="Enter total contract amount") }}
+        {% endif %}
         <label>{{ form.group_id.label }}</label>
         {{ form.group_id() }}
+        {% if form.group_id.errors %}
+        <small class="muted" style="color:#fca5a5;">{{ form.group_id.errors[0] }}</small>
+        {% endif %}
         {{ form.submit() }}
     </form>
 </div>
